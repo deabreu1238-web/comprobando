@@ -1,10 +1,12 @@
-# Instalación con un clic en Render: crea el servidor y la base de datos.
+# Instalación con un clic en Render: crea el servidor y la base de datos (plan gratuito para probar).
+# Antes de tener clientes reales, pasá el servidor a "Starter" y la base a "Basic" desde el panel de Render:
+# el servidor gratuito se duerme tras 15 minutos sin uso y la base gratuita vence a los 30 días.
 # Al instalar, Render pide solo tres datos: ANTHROPIC_API_KEY, ADMIN_EMAIL y ADMIN_PASSWORD.
 services:
   - type: web
     name: comprobando
     runtime: node
-    plan: starter
+    plan: free
     region: virginia
     buildCommand: npm ci && npm run build
     startCommand: npm start
@@ -28,7 +30,7 @@ services:
 
 databases:
   - name: comprobando-db
-    plan: basic-256mb
+    plan: free
     region: virginia
     databaseName: comprobando
     user: comprobando

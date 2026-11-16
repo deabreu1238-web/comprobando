@@ -8,6 +8,9 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #0f1218; --surface: #171b23; --surface-2: #1d222c; --line: #2a303c; --text: #e8ebf1; --muted: #9aa3b4;
   --accent: #5b9bff; --accent-ink: #0b1220; --ok: #3ecf8e; --ok-bg: #12291f; --warn: #f0b456; --warn-bg: #2d230f; --bad: #ff7b72; --bad-bg: #321715; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1218; --surface: #171b23; --surface-2: #1d222c; --line: #2a303c; --text: #e8ebf1; --muted: #9aa3b4;
+  --accent: #5b9bff; --accent-ink: #0b1220; --ok: #3ecf8e; --ok-bg: #12291f; --warn: #f0b456; --warn-bg: #2d230f; --bad: #ff7b72; --bad-bg: #321715; color-scheme: dark }
 * { box-sizing: border-box }
 [hidden] { display: none !important }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--f-body); -webkit-font-smoothing: antialiased }

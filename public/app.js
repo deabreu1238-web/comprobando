@@ -116,7 +116,8 @@
     var src = { receipt: 'Comprobante', kommo_stage: 'Etapa de Kommo', manual: 'Manual' }[s.source];
     var capi = { sent: ['ok', 'Enviada a Meta'], error: ['bad', 'Error en Meta'], skipped: ['warn', 'No enviada'], not_sent: ['', 'Sin enviar'] }[s.capi_status];
     var capiWhy = s.capi_status !== 'sent' && s.capi_response ? (s.capi_response.motivo || (s.capi_response.error && (s.capi_response.error.message || s.capi_response.error)) || '') : '';
-    var img = s.receipt_id ? '<img class="thumb" loading="lazy" alt="Comprobante" src="/api/receipts/' + s.receipt_id + '/image" data-src="/api/receipts/' + s.receipt_id + '/image">' : '<div class="thumb empty">Sin imagen</div>';
+    var imgUrl = s.receipt_id ? (window.CP_IMG ? window.CP_IMG(s.receipt_id) : '/api/receipts/' + s.receipt_id + '/image') : '';
+    var img = s.receipt_id ? '<img class="thumb" loading="lazy" alt="Comprobante" src="' + esc(imgUrl) + '" data-src="' + esc(imgUrl) + '">' : '<div class="thumb empty">Sin imagen</div>';
     var actions = '';
     if (s.status === 'pending') {
       actions = '<div class="row"><label style="display:flex;align-items:center;gap:8px">Monto <input class="amount-edit" id="amt-' + s.id + '" type="number" min="0" step="0.01" value="' + (s.amount || '') + '"></label>' +

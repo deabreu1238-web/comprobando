@@ -50,7 +50,9 @@ El botón crea el servidor y la base de datos (definidos en `render.yaml`). Rend
 | `ADMIN_EMAIL` | Tu email para entrar al panel |
 | `ADMIN_PASSWORD` | Tu contraseña (mínimo 10 caracteres). Después de entrar, borrala en Environment. |
 
-La clave de cifrado, la conexión a la base y la dirección pública se configuran solas. Costo aproximado: unos USD 13 por mes (servidor Starter + base Basic).
+La clave de cifrado, la conexión a la base y la dirección pública se configuran solas.
+
+Se instala en el **plan gratuito** para probar. Antes de tener clientes reales, pasá el servidor a **Starter** y la base a **Basic** desde el panel de Render (unos USD 13 por mes en total): el servidor gratuito se duerme tras 15 minutos sin uso (el primer clic tarda casi un minuto) y la base gratuita vence a los 30 días.
 
 ## Instalación manual (Railway + Supabase)
 
