@@ -38,7 +38,21 @@ También detecta ventas por **etapa de Kommo**: un negocio movido a "Ganado", "C
 | `migrations/` | Esquema de la base de datos |
 | `tests/` | Prueba de punta a punta |
 
-## Instalación en producción (Railway + Supabase)
+## Instalación con un clic (Render)
+
+[![Instalar en Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/deabreu1238-web/comprobando)
+
+El botón crea el servidor y la base de datos (definidos en `render.yaml`). Render pide solo tres datos:
+
+| Dato | Qué es |
+|---|---|
+| `ANTHROPIC_API_KEY` | Tu clave de la API de Anthropic (console.anthropic.com → API Keys) |
+| `ADMIN_EMAIL` | Tu email para entrar al panel |
+| `ADMIN_PASSWORD` | Tu contraseña (mínimo 10 caracteres). Después de entrar, borrala en Environment. |
+
+La clave de cifrado, la conexión a la base y la dirección pública se configuran solas. Costo aproximado: unos USD 13 por mes (servidor Starter + base Basic).
+
+## Instalación manual (Railway + Supabase)
 
 1. **Base de datos:** creá un proyecto en Supabase y copiá la cadena de conexión en Project Settings → Database → Connection string (URI).
 2. **Servidor:** en Railway, creá un servicio desde este repositorio de GitHub.

@@ -1,0 +1,34 @@
+# Instalación con un clic en Render: crea el servidor y la base de datos.
+# Al instalar, Render pide solo tres datos: ANTHROPIC_API_KEY, ADMIN_EMAIL y ADMIN_PASSWORD.
+services:
+  - type: web
+    name: comprobando
+    runtime: node
+    plan: starter
+    region: virginia
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: comprobando-db
+          property: connectionString
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: comprobando-db
+    plan: basic-256mb
+    region: virginia
+    databaseName: comprobando
+    user: comprobando
