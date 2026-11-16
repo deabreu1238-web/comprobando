@@ -1,0 +1,35 @@
+{
+  "name": "comprobado",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Seguimiento de ventas por WhatsApp: código único por clic, lectura de comprobantes con IA y envío de compras a Meta (API de conversiones).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test --test-concurrency=1 tests/*.test.ts",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "create-account": "tsx src/scripts/create-account.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
+    "@fastify/cookie": "^11.1.5",
+    "@fastify/cors": "^10.1.0",
+    "@fastify/formbody": "^8.0.2",
+    "@fastify/static": "^8.3.0",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
