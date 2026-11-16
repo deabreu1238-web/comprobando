@@ -15,5 +15,9 @@ export const config = {
   // Modelo de Claude para leer comprobantes.
   receiptModel: process.env.RECEIPT_MODEL ?? 'claude-opus-5-5',
   metaApiVersion: process.env.META_API_VERSION ?? 'v21.0',
-  cookieSecure: process.env.NODE_ENV === 'production',
+  // Si la app está publicada con https, las cookies de sesión viajan solo por https.
+  cookieSecure: (process.env.PUBLIC_URL ?? '').startsWith('https://'),
+  // Crea el primer superadministrador al arrancar, si todavía no existe ninguno.
+  adminEmail: process.env.ADMIN_EMAIL,
+  adminPassword: process.env.ADMIN_PASSWORD,
 };

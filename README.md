@@ -47,14 +47,11 @@ También detecta ventas por **etapa de Kommo**: un negocio movido a "Ganado", "C
 3. **Variables de entorno:** cargalas en Railway (ver `.env.example`):
    - `DATABASE_URL`: la cadena de Supabase
    - `PUBLIC_URL`: la dirección pública que te da Railway (o tu dominio)
-   - `APP_ENCRYPTION_KEY`: generala con `openssl rand -base64 32` y guardala aparte. Si la perdés, hay que volver a cargar los tokens de todas las cuentas.
+   - `APP_ENCRYPTION_KEY`: un texto aleatorio de 32 caracteres o más (una contraseña generada sirve). Guardala aparte: si la perdés, hay que volver a cargar los tokens de todas las cuentas.
+   - `ADMIN_EMAIL` y `ADMIN_PASSWORD`: tu usuario administrador, que se crea en el primer arranque. Después borrá `ADMIN_PASSWORD`.
+   - No definas `NODE_ENV=production` en la compilación: deja afuera TypeScript y falla el build.
    - `ANTHROPIC_API_KEY`: tu clave de la API de Anthropic
-4. **Primer arranque:** el servidor crea las tablas solo. Después creá tu usuario administrador:
-
-   ```bash
-   npm run create-account -- --superadmin --email vos@tumail.com --password "una-clave-larga"
-   ```
-
+4. **Primer arranque:** el servidor crea las tablas y tu usuario administrador.
 5. Entrá a `PUBLIC_URL` con ese usuario y creá las cuentas de tus clientes en **Cuentas (admin)**.
 
 ## Alta de un cliente

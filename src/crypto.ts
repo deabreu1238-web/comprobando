@@ -36,9 +36,11 @@ export function verifyPassword(password: string, stored: string): boolean {
 
 // --- cifrado de tokens guardados (AES-256-GCM) ---
 function key(encryptionKey: string): Buffer {
-  const k = Buffer.from(encryptionKey, 'base64');
-  if (k.length !== 32) throw new Error('APP_ENCRYPTION_KEY tiene que ser 32 bytes en base64 (openssl rand -base64 32)');
-  return k;
+  // Acepta 32 bytes en base64 (openssl rand -base64 32) o cualquier texto aleatorio de 32 caracteres o más.
+  const k = encryptionKey.trim();
+  if (/^[A-Za-z0-9+/]{43}=$/.test(k)) return Buffer.from(k, 'base64');
+  if (k.length < 32) throw new Error('APP_ENCRYPTION_KEY tiene que tener al menos 32 caracteres aleatorios');
+  return crypto.createHash('sha256').update(k).digest();
 }
 
 export function encrypt(plain: string, encryptionKey: string): string {
