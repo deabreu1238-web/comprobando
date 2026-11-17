@@ -1,0 +1,19 @@
+DASHBOARD DE CAJA · PanelPro
+============================
+
+Archivos:
+  index.html, app.css, app.js  -> el dashboard (no tocar)
+  config.js                    -> acá van la URL y la anon key de Supabase
+  supabase.sql                 -> se pega una sola vez en Supabase -> SQL Editor -> Run
+
+Si config.js está vacío, el dashboard abre en modo DEMO con datos de ejemplo.
+
+Dar acceso a un cliente:
+  Supabase -> Authentication -> Users -> Add user -> Create new user
+  (email + contraseña, tildar "Auto Confirm User"). Le pasás esos datos al cliente.
+
+Suspender o reactivar:
+  Entrás al dashboard con tu usuario admin -> botón Suspender / Reactivar.
+
+Hacerte admin (una sola vez, en SQL Editor):
+  update public.perfiles set rol = 'admin' where email = 'TU_EMAIL';
