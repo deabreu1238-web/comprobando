@@ -57,3 +57,11 @@
 .est.pausado { color: var(--muted); background: rgba(255,255,255,.06) }
 .empty-lib { padding: 30px; text-align: center; color: var(--muted); border: 1px dashed var(--line2); border-radius: 16px; margin-top: 14px }
 @media (max-width: 640px) { .steps button small { display: none } .out { grid-template-columns: 1fr 1fr } }
+.refs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px }
+.ref { position: relative; width: 104px; height: 104px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line2); background: var(--bg2) }
+.ref img { width: 100%; height: 100%; object-fit: cover; display: block }
+.ref .rm { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: rgba(7,11,18,.8); color: #fff; font-size: 16px; line-height: 1; cursor: pointer }
+.ref span { position: absolute; left: 6px; bottom: 6px; font: 700 10px var(--f); letter-spacing: .08em; text-transform: uppercase; background: rgba(46,229,157,.9); color: #052016; padding: 2px 6px; border-radius: 6px }
+.ref.add { display: grid; place-items: center; align-content: center; gap: 2px; cursor: pointer; border-style: dashed; color: var(--text2); font-size: 28px; font-weight: 300 }
+.ref.add span { position: static; background: none; color: var(--muted); font-size: 11px; padding: 0 }
+.ref.add:focus-within { outline: 2px solid var(--brand) }

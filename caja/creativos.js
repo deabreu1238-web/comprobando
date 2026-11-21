@@ -20,7 +20,7 @@
       bajada: 'Escribinos y te atendemos al instante.', cta: 'Escribinos por WhatsApp',
       beneficios: 'Atención personalizada\nRespuesta inmediata\nTodo por WhatsApp',
       dato: '24 h', datoTxt: 'de atención, todos los días',
-      testimonio: 'Me respondieron en minutos y me resolvieron todo. Súper recomendable.', autor: 'Martín, cliente', lib: [] }, extra || {});
+      testimonio: 'Me respondieron en minutos y me resolvieron todo. Súper recomendable.', autor: 'Martín, cliente', refs: [], lib: [] }, extra || {});
   }
   var DB = load() || { sel: 'norte', clients: {
     norte: brand('Norte', '#2b4dff', '#38d9f0'),
@@ -28,12 +28,13 @@
     litoral: brand('Litoral', '#059669', '#a3e635'),
     sur: brand('Sur', '#ea580c', '#fbbf24'),
   } };
-  var UI = { step: 'gen', tpl: { titular: true, dato: true, lista: true, testimonio: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos' };
+  var UI = { step: 'gen', tpl: { foto: true, marco: true, titular: true, dato: true, lista: true, testimonio: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos' };
   var FMT = { '1x1': [1080, 1080, 'Cuadrado 1:1', 'Feed'], '4x5': [1080, 1350, 'Vertical 4:5', 'Feed'], '9x16': [1080, 1920, 'Historia 9:16', 'Historias y Reels'] };
-  var TPL = { titular: 'Titular grande', dato: 'Número destacado', lista: 'Lista de beneficios', testimonio: 'Testimonio' };
+  var TPL = { foto: 'Foto de fondo', marco: 'Foto + titular', titular: 'Titular grande', dato: 'Número destacado', lista: 'Lista de beneficios', testimonio: 'Testimonio' };
   var EST = ['nuevo', 'activo', 'ganador', 'cansado', 'pausado'];
   var ESTL = { nuevo: 'Nuevo', activo: 'Activo', ganador: 'Ganador', cansado: 'Cansado', pausado: 'Pausado' };
-  function C() { return DB.clients[DB.sel]; }
+  function C() { var c = DB.clients[DB.sel]; if (!c.refs) c.refs = []; return c; }
+  function refsOf(b) { return b.refs || []; }
 
   // ------------------------------------------------------------ dibujo de piezas (canvas)
   var logoCache = {};
@@ -52,15 +53,26 @@
     ctx.font = weight + ' ' + min + 'px Inter'; return { size: min, lines: wrap(ctx, text, maxW) };
   }
   function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function lite(h) {
+    var n = parseInt(h.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255, L = (.2126 * r + .7152 * g + .0722 * b) / 255;
+    if (L >= .6) return h; var t = Math.min(1, (.6 - L) / (1 - L) + .08);
+    return '#' + [r, g, b].map(function (v) { return Math.round(v + (255 - v) * t).toString(16).padStart(2, '0'); }).join('');
+  }
   function hexA(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
 
-  function draw(cv, b, tpl, fmt, text, logo) {
+  function cover(ctx, img, x, y, w, h) { var s = Math.max(w / img.width, h / img.height), iw = img.width * s, ih = img.height * s; ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih); }
+  function draw(cv, b, tpl, fmt, text, logo, photo) {
     var W = FMT[fmt][0], H = FMT[fmt][1], ctx = cv.getContext('2d'), P = 84, tall = H > 1500;
     cv.width = W; cv.height = H;
     var g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#070b12'); g.addColorStop(1, '#0f1622');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     var r1 = ctx.createRadialGradient(W * .85, H * .1, 0, W * .85, H * .1, W * .9); r1.addColorStop(0, hexA(b.c1, .55)); r1.addColorStop(1, hexA(b.c1, 0)); ctx.fillStyle = r1; ctx.fillRect(0, 0, W, H);
     var r2 = ctx.createRadialGradient(W * .05, H * .95, 0, W * .05, H * .95, W * .8); r2.addColorStop(0, hexA(b.c2, .35)); r2.addColorStop(1, hexA(b.c2, 0)); ctx.fillStyle = r2; ctx.fillRect(0, 0, W, H);
+    if (tpl === 'foto' && photo) {
+      cover(ctx, photo, 0, 0, W, H);
+      var ov = ctx.createLinearGradient(0, 0, 0, H); ov.addColorStop(0, 'rgba(7,11,18,.72)'); ov.addColorStop(.18, 'rgba(7,11,18,.2)'); ov.addColorStop(.36, 'rgba(7,11,18,.25)'); ov.addColorStop(.52, 'rgba(7,11,18,.82)'); ov.addColorStop(1, 'rgba(7,11,18,.96)');
+      ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
+    }
     var top = tall ? 220 : P;
     // marca
     var lx = P;
@@ -78,14 +90,26 @@
     // cuerpo
     var bodyTop = tall ? 600 : top + 84 + 80, bodyBot = ctaY - 60, bw = W - 2 * P, y;
     ctx.textBaseline = 'alphabetic';
-    if (tpl === 'titular') {
+    if (tpl === 'foto') {
+      var ff = fit(ctx, text, bw, tall ? 520 : 330, tall ? 130 : 104, 56, '900', 1.06), fy = bodyBot - ff.lines.length * ff.size * 1.06 + ff.size * .8;
+      ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 24;
+      ff.lines.forEach(function (l, i) { if (i === ff.lines.length - 1) { var tg0 = ctx.createLinearGradient(P, 0, P + ctx.measureText(l).width, 0); tg0.addColorStop(0, lite(b.c2)); tg0.addColorStop(1, '#ffffff'); ctx.fillStyle = tg0; } else ctx.fillStyle = '#fff'; ctx.fillText(l, P, fy); fy += ff.size * 1.06; });
+      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    } else if (tpl === 'marco') {
+      var ff2 = fit(ctx, text, bw, tall ? 330 : 210, tall ? 104 : 80, 48, '900', 1.06), th = ff2.lines.length * ff2.size * 1.06;
+      var fh = bodyBot - bodyTop - th - 40;
+      ctx.save(); rr(ctx, P, bodyTop - 30, bw, fh, 36); ctx.clip(); if (photo) cover(ctx, photo, P, bodyTop - 30, bw, fh); ctx.restore();
+      ctx.strokeStyle = hexA(b.c2, .7); ctx.lineWidth = 4; rr(ctx, P, bodyTop - 30, bw, fh, 36); ctx.stroke();
+      y = bodyTop - 30 + fh + 40 + ff2.size * .85; ctx.fillStyle = '#fff';
+      ff2.lines.forEach(function (l) { ctx.fillText(l, P, y); y += ff2.size * 1.06; });
+    } else if (tpl === 'titular') {
       var f = fit(ctx, text, bw, (bodyBot - bodyTop) * .72, tall ? 150 : 128, 64, '900', 1.06);
       y = bodyTop + f.size;
       ctx.fillStyle = '#ffffff';
-      f.lines.forEach(function (l, i) { if (i === f.lines.length - 1) { var tg = ctx.createLinearGradient(P, 0, P + ctx.measureText(l).width, 0); tg.addColorStop(0, b.c2); tg.addColorStop(1, '#ffffff'); ctx.fillStyle = tg; } ctx.fillText(l, P, y); y += f.size * 1.06; });
+      f.lines.forEach(function (l, i) { if (i === f.lines.length - 1) { var tg = ctx.createLinearGradient(P, 0, P + ctx.measureText(l).width, 0); tg.addColorStop(0, lite(b.c2)); tg.addColorStop(1, '#ffffff'); ctx.fillStyle = tg; } ctx.fillText(l, P, y); y += f.size * 1.06; });
       ctx.fillStyle = '#a5afc0'; var s2 = fit(ctx, b.bajada, bw, 200, 46, 30, '500', 1.35); s2.lines.forEach(function (l) { y += 8; ctx.fillText(l, P, y + s2.size * .4); y += s2.size * 1.35; });
     } else if (tpl === 'dato') {
-      ctx.font = '900 ' + (tall ? 330 : 280) + 'px Inter'; var dg = ctx.createLinearGradient(P, 0, P + ctx.measureText(b.dato).width, 0); dg.addColorStop(0, b.c2); dg.addColorStop(1, '#ffffff');
+      ctx.font = '900 ' + (tall ? 330 : 280) + 'px Inter'; var dg = ctx.createLinearGradient(P, 0, P + ctx.measureText(b.dato).width, 0); dg.addColorStop(0, lite(b.c2)); dg.addColorStop(1, '#ffffff');
       var ds = tall ? 330 : 280; ctx.font = '900 ' + ds + 'px Inter'; while (ctx.measureText(b.dato).width > bw && ds > 120) { ds -= 10; ctx.font = '900 ' + ds + 'px Inter'; }
       y = bodyTop + ds * .85; ctx.fillStyle = dg; ctx.fillText(b.dato, P - 8, y);
       ctx.fillStyle = '#eef1f6'; var s3 = fit(ctx, b.datoTxt, bw, 160, 60, 36, '800', 1.15); y += 30; s3.lines.forEach(function (l) { y += s3.size * 1.15; ctx.fillText(l, P, y); });
@@ -105,7 +129,7 @@
       });
     } else {
       ctx.fillStyle = 'rgba(255,255,255,.06)'; var boxY = bodyTop, boxH = bodyBot - bodyTop - 10; rr(ctx, P, boxY, bw, boxH, 40); ctx.fill();
-      ctx.fillStyle = hexA(b.c2, .9); ctx.font = '900 200px Inter'; ctx.fillText('“', P + 40, boxY + 190);
+      ctx.fillStyle = hexA(lite(b.c2), .9); ctx.font = '900 200px Inter'; ctx.fillText('“', P + 40, boxY + 190);
       ctx.fillStyle = '#fbbf24'; ctx.font = '700 52px Inter'; ctx.fillText('★★★★★', P + 56, boxY + 250);
       var f3 = fit(ctx, '«' + b.testimonio + '»', bw - 112, boxH - 420, tall ? 70 : 60, 34, '700', 1.3); ctx.fillStyle = '#fff'; y = boxY + 300 + f3.size;
       f3.lines.forEach(function (l) { ctx.fillText(l, P + 56, y); y += f3.size * 1.3; });
@@ -113,6 +137,35 @@
       ctx.fillStyle = hexA(b.c2, 1); ctx.font = '800 40px Inter'; var t3 = text; while (ctx.measureText(t3).width > bw && t3.length > 4) t3 = t3.slice(0, -2);
     }
     return cv;
+  }
+
+  // ------------------------------------------------------------ referencias
+  function shrink(file, max, q) {
+    return new Promise(function (ok) {
+      var r = new FileReader();
+      r.onload = function () { var im = new Image(); im.onload = function () { var s = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', q)); }; im.onerror = function () { ok(null); }; im.src = r.result; };
+      r.onerror = function () { ok(null); }; r.readAsDataURL(file);
+    });
+  }
+  function hex(r, g, b) { return '#' + [r, g, b].map(function (v) { return Math.round(v).toString(16).padStart(2, '0'); }).join(''); }
+  async function palette(srcs) {
+    var buckets = {};
+    for (var i = 0; i < srcs.length; i++) {
+      var im = await logoImg(srcs[i]); if (!im) continue;
+      var c = document.createElement('canvas'); c.width = c.height = 64; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 64, 64);
+      var d = x.getImageData(0, 0, 64, 64).data;
+      for (var p = 0; p < d.length; p += 4) {
+        var r = d[p], g = d[p + 1], bl = d[p + 2], mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), sat = mx ? (mx - mn) / mx : 0;
+        if (sat < .35 || mx < 70) continue;
+        var hue = Math.round((Math.atan2(Math.sqrt(3) * (g - bl), 2 * r - g - bl) * 180 / Math.PI + 360) % 360 / 24);
+        var k = buckets[hue] || (buckets[hue] = { n: 0, r: 0, g: 0, b: 0, w: 0 });
+        var w = sat * mx / 255; k.n++; k.w += w; k.r += r * w; k.g += g * w; k.b += bl * w;
+      }
+    }
+    var list = Object.keys(buckets).map(function (h) { var k = buckets[h]; return { h: +h, w: k.w, c: hex(k.r / k.w, k.g / k.w, k.b / k.w) }; }).sort(function (a, z) { return z.w - a.w; });
+    if (!list.length) return null;
+    var second = list.find(function (q) { var dh = Math.abs(q.h - list[0].h); return Math.min(dh, 15 - dh) >= 2; }) || list[1] || list[0];
+    return [list[0].c, second.c];
   }
 
   // ------------------------------------------------------------ textos de anuncio
@@ -129,17 +182,20 @@
 
   // ------------------------------------------------------------ generación
   async function generate() {
-    var b = C(), logo = await logoImg(b.logo), T = lines(b.titulares).slice(0, 3);
+    var b = C(), logo = await logoImg(b.logo), T = lines(b.titulares).slice(0, 3), photos = [];
+    for (var r = 0; r < Math.min(3, refsOf(b).length); r++) { var im = await logoImg(refsOf(b)[r]); if (im) photos.push(im); }
     if (!T.length) { toast('Escribí al menos un titular en la marca'); return; }
     try { await document.fonts.load('900 80px Inter'); await document.fonts.load('700 40px Inter'); } catch (e) {}
     var out = [];
     Object.keys(TPL).forEach(function (t) {
       if (!UI.tpl[t]) return;
-      var texts = t === 'titular' || t === 'lista' ? T : [T[0]];
+      var photoT = t === 'foto' || t === 'marco';
+      if (photoT && !photos.length) return;
+      var texts = photoT ? photos.map(function (_, i) { return T[i % T.length]; }) : t === 'titular' || t === 'lista' ? T : [T[0]];
       texts.forEach(function (tx, i) {
         Object.keys(FMT).forEach(function (f) {
           if (!UI.fmt[f]) return;
-          out.push({ tpl: t, fmt: f, text: tx, n: i + 1, cv: draw(document.createElement('canvas'), b, t, f, tx, logo) });
+          out.push({ tpl: t, fmt: f, text: tx, n: i + 1, cv: draw(document.createElement('canvas'), b, t, f, tx, logo, photoT ? photos[i] : null) });
         });
       });
     });
@@ -203,6 +259,10 @@
       f('nombre', 'Nombre de la marca') +
       '<div class="field">Logo<div class="logo-up"><span class="pv">' + (b.logo ? '<img src="' + b.logo + '" alt="">' : 'Sin logo') + '</span><label class="btn sm">Subir logo<input type="file" id="logo" accept="image/*" hidden></label>' + (b.logo ? '<button class="btn sm" id="nologo">Quitar</button>' : '') + '</div><small class="help">PNG con fondo transparente, idealmente.</small></div>' +
       '<div class="field">Colores<div class="colors"><input type="color" data-k="c1" value="' + b.c1 + '"><input type="color" data-k="c2" value="' + b.c2 + '"><small class="help">Principal y secundario</small></div></div>' +
+      '<div class="field full">Imágenes de referencia<small class="help">Fotos o anuncios del cliente que muestran el estilo que querés: su local, su equipo, capturas, anuncios que ya funcionaron. Se usan en las plantillas con foto y para tomar los colores. Hasta 6.</small>' +
+        '<div class="refs">' + refsOf(b).map(function (r, i) { return '<div class="ref"><img src="' + r + '" alt="Referencia ' + (i + 1) + '"><button type="button" class="rm" data-rmref="' + i + '" aria-label="Quitar referencia ' + (i + 1) + '">×</button>' + (i < 3 ? '<span>Se usa</span>' : '') + '</div>'; }).join('') +
+        (refsOf(b).length < 6 ? '<label class="ref add">+<span>Agregar</span><input type="file" id="refs" accept="image/*" multiple hidden></label>' : '') + '</div>' +
+        (refsOf(b).length ? '<div><button type="button" class="btn sm" id="pal">Tomar los colores de las referencias</button></div>' : '') + '</div>' +
       f('cta', 'Botón (llamado a la acción)') +
       f('titulares', 'Titulares', 'Uno por renglón. Se usan los 3 primeros para las variantes.', true) +
       f('beneficios', 'Beneficios', 'Uno por renglón, hasta 4.', true) +
@@ -212,7 +272,7 @@
   }
   function gen(b) {
     var h = '<article class="card" style="--c:var(--green)"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Generar piezas para ' + esc(b.nombre) + '</h2><p class="sub">Elegí plantillas y formatos. Cada titular da una variante distinta.</p></div></div>' +
-      '<span class="lbl" style="display:block;margin-top:16px">Plantillas</span><div class="picks">' + Object.keys(TPL).map(function (k) { return '<button class="pick" data-tpl="' + k + '" aria-pressed="' + !!UI.tpl[k] + '">' + TPL[k] + '</button>'; }).join('') + '</div>' +
+      '<span class="lbl" style="display:block;margin-top:16px">Plantillas</span>' + (refsOf(b).length ? '' : '<p class="muted" style="font-size:13px;margin:6px 0 0">Las plantillas con foto necesitan imágenes de referencia. <button class="link" data-s="marca">Agregarlas en la marca</button></p>') + '<div class="picks">' + Object.keys(TPL).map(function (k) { return '<button class="pick" data-tpl="' + k + '" aria-pressed="' + !!UI.tpl[k] + '">' + TPL[k] + '</button>'; }).join('') + '</div>' +
       '<span class="lbl" style="display:block;margin-top:16px">Formatos</span><div class="picks">' + Object.keys(FMT).map(function (k) { return '<button class="pick" data-fmt="' + k + '" aria-pressed="' + !!UI.fmt[k] + '">' + FMT[k][2] + ' · ' + FMT[k][3] + '</button>'; }).join('') + '</div>' +
       '<div class="gen-bar"><span class="muted" style="font-size:13.5px">' + count() + ' piezas por tanda</span><div class="actions">' + (UI.out.length ? '<button class="btn" id="zip">' + IC.dl + ' Descargar todo (.zip)</button><button class="btn" id="saveall">Guardar todo en biblioteca</button>' : '') + '<button class="btn pri" id="go">' + IC.spark + ' Generar</button></div></div>';
     if (UI.out.length) h += '<div class="out" id="out"></div>';
@@ -221,7 +281,7 @@
       UI.copies.map(function (c, i) { return '<div class="copy"><div><small>' + c[0] + '</small><p>' + esc(c[1]) + '</p></div><button class="btn sm" data-copy="' + i + '">Copiar</button></div>'; }).join('') + '</div></article>';
     return h;
   }
-  function count() { var t = 0; Object.keys(TPL).forEach(function (k) { if (UI.tpl[k]) t += (k === 'titular' || k === 'lista') ? Math.min(3, Math.max(1, lines(C().titulares).length)) : 1; }); return t * Object.keys(FMT).filter(function (k) { return UI.fmt[k]; }).length; }
+  function count() { var t = 0, np = Math.min(3, refsOf(C()).length); Object.keys(TPL).forEach(function (k) { if (UI.tpl[k]) t += (k === 'foto' || k === 'marco') ? np : (k === 'titular' || k === 'lista') ? Math.min(3, Math.max(1, lines(C().titulares).length)) : 1; }); return t * Object.keys(FMT).filter(function (k) { return UI.fmt[k]; }).length; }
   function lib(b) {
     var nd = needs(b), list = b.lib.filter(function (x) { return UI.filter === 'todos' || x.estado === UI.filter; });
     var h = '<article class="card" style="--c:var(--amber)"><div class="ch"><span class="ico">' + IC.lib + '</span><div><h2>Biblioteca de ' + esc(b.nombre) + '</h2><p class="sub">' + b.lib.length + ' piezas · ' + nd.act + ' en circulación</p></div></div>';
@@ -244,6 +304,13 @@
     $('#addc').onclick = function () { var n = prompt('Nombre del cliente'); if (!n) return; var k = slug(n) || 'c' + Date.now(); DB.clients[k] = brand(n.trim(), '#2b4dff', '#38d9f0'); DB.sel = k; UI.step = 'marca'; save(); render(); };
     $$('[data-k]').forEach(function (i) { i.oninput = function () { b[i.dataset.k] = i.value; save(); if (i.dataset.k === 'nombre') $$('[data-c="' + DB.sel + '"]').forEach(function (t) { t.lastChild.nodeType === 3 ? (t.lastChild.textContent = i.value) : 0; }); }; });
     if ($('#logo')) $('#logo').onchange = function () { var f = this.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var im = new Image(); im.onload = function () { var c = document.createElement('canvas'), s = Math.min(1, 400 / Math.max(im.width, im.height)); c.width = im.width * s; c.height = im.height * s; c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); b.logo = c.toDataURL('image/png'); save(); render(); }; im.src = r.result; }; r.readAsDataURL(f); };
+    if ($('#refs')) $('#refs').onchange = async function () {
+      var files = Array.prototype.slice.call(this.files, 0, 6 - refsOf(b).length);
+      for (var i = 0; i < files.length; i++) { var d = await shrink(files[i], 1080, .78); if (d) b.refs.push(d); }
+      save(); render(); toast(files.length === 1 ? 'Referencia agregada' : files.length + ' referencias agregadas');
+    };
+    $$('[data-rmref]').forEach(function (x) { x.onclick = function () { b.refs.splice(+x.dataset.rmref, 1); save(); render(); }; });
+    if ($('#pal')) $('#pal').onclick = async function () { var p = await palette(refsOf(b)); if (!p) { toast('No encontré colores marcados en las referencias'); return; } b.c1 = p[0]; b.c2 = p[1]; save(); render(); toast('Colores tomados de las referencias'); };
     if ($('#nologo')) $('#nologo').onclick = function () { b.logo = ''; save(); render(); };
     $$('[data-tpl]').forEach(function (x) { x.onclick = function () { UI.tpl[x.dataset.tpl] = !UI.tpl[x.dataset.tpl]; render(); }; });
     $$('[data-fmt]').forEach(function (x) { x.onclick = function () { UI.fmt[x.dataset.fmt] = !UI.fmt[x.dataset.fmt]; render(); }; });
