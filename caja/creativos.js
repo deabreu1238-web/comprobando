@@ -11,18 +11,31 @@
   function lines(s) { return String(s || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
   function usd(v) { return 'US$ ' + Number(v).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function slug(s) { return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
-  var KEY = 'pp_banco_v1';
-  function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
+  var KEY = 'pp_banco_v2';
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY));
+      if (d) return d;
+      var old = JSON.parse(localStorage.getItem('pp_banco_v1'));
+      if (old && old.clients) { Object.keys(old.clients).forEach(function (k) { old.clients[k].lib = (old.clients[k].lib || []).filter(function (x) { return !/^(norte|delta|litoral|sur)\d+$/.test(x.id); }); }); return old; }
+    } catch (e) {}
+    return null;
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { toast('No se pudo guardar en este navegador'); } }
 
   // ------------------------------------------------------------ marcas de ejemplo
   function brand(nombre, c1, c2, extra) {
     return Object.assign({ nombre: nombre, c1: c1, c2: c2, logo: '',
-      titulares: 'Atención las 24 horas\nRespuesta en menos de 5 minutos\nTodo desde tu WhatsApp',
-      bajada: 'Escribinos y te atendemos al instante.', cta: 'Escribinos por WhatsApp',
-      beneficios: 'Atención personalizada\nRespuesta inmediata\nTodo por WhatsApp',
-      dato: '24 h', datoTxt: 'de atención, todos los días',
-      testimonio: 'Me respondieron en minutos y me resolvieron todo. Súper recomendable.', autor: 'Martín, cliente', refs: [], lib: [] }, extra || {});
+      estilo: 'ambos',
+      titulares: 'Te respondemos en *menos de 5 minutos*\nAtención real, *las 24 horas*\nTodo resuelto *desde tu WhatsApp*',
+      bajada: 'Escribinos y una persona de nuestro equipo te atiende al instante.', cta: 'Escribinos por WhatsApp', sello: 'Atención 24/7',
+      beneficios: 'Respuesta en minutos\nAtención personalizada\nTodo por WhatsApp\nSin vueltas ni demoras',
+      otros: 'Te responden cuando pueden\nAtención automática\nTenés que llamar o ir\nTrámites largos',
+      pasos: 'Nos escribís por WhatsApp\nTe atiende una persona real\nListo, en minutos',
+      chatQ: 'Hola! ¿Están atendiendo ahora?', chatA: '¡Hola! Sí, estamos las 24 hs. ¿En qué te ayudamos?', chatQ2: 'Genial, quiero empezar hoy', chatA2: 'Perfecto, te paso los pasos y en 2 minutos quedás listo', nota: '¡En 2 minutos!',
+      notifs: '¡Hola! Ya te estamos atendiendo\nListo, quedó todo resuelto\n¿Te ayudamos con algo más?\nGracias por elegirnos',
+      dato: '2 min', datoTxt: 'es lo que tardamos en *responderte*',
+      testimonio: 'Me respondieron al toque y me resolvieron todo en el día. Atención de diez, los recomiendo.', autor: 'Martín G., cliente', refs: [], lib: [] }, extra || {});
   }
   var DB = load() || { sel: 'norte', clients: {
     norte: brand('Norte', '#2b4dff', '#38d9f0'),
@@ -30,115 +43,23 @@
     litoral: brand('Litoral', '#059669', '#a3e635'),
     sur: brand('Sur', '#ea580c', '#fbbf24'),
   } };
-  var UI = { step: 'gen', tpl: { foto: true, marco: true, titular: true, dato: true, lista: true, testimonio: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos', ai: { prompt: '', sel: [0, 1, 2], size: '1024x1024', n: 2, q: 'medium', busy: false, imgs: [], err: '' } };
-  var FMT = { '1x1': [1080, 1080, 'Cuadrado 1:1', 'Feed'], '4x5': [1080, 1350, 'Vertical 4:5', 'Feed'], '9x16': [1080, 1920, 'Historia 9:16', 'Historias y Reels'] };
-  var TPL = { foto: 'Foto de fondo', marco: 'Foto + titular', titular: 'Titular grande', dato: 'Número destacado', lista: 'Lista de beneficios', testimonio: 'Testimonio' };
+  Object.keys(DB.clients).forEach(function (k) { var c = DB.clients[k], d = brand(c.nombre, c.c1, c.c2); Object.keys(d).forEach(function (f) { if (c[f] == null) c[f] = d[f]; }); });
+  var UI = { step: 'gen', tpl: { gancho: true, chat: true, resena: true, vs: true, pasos: true, dato: true, foto: true, notif: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos', ai: { prompt: '', sel: [0, 1, 2], size: '1024x1024', n: 2, q: 'medium', busy: false, imgs: [], err: '' } };
+  var FMT = PIEZAS.FMT, TPL = {};
+  Object.keys(PIEZAS.TPL).forEach(function (k) { TPL[k] = PIEZAS.TPL[k].n; });
+  var ESTILOS = { oscuro: 'Oscuro', claro: 'Claro', ambos: 'Los dos' };
+  function estilos(b) { var e = b.estilo || 'ambos'; return e === 'ambos' ? ['oscuro', 'claro'] : [e]; }
   var EST = ['nuevo', 'activo', 'ganador', 'cansado', 'pausado'];
   var ESTL = { nuevo: 'Nuevo', activo: 'Activo', ganador: 'Ganador', cansado: 'Cansado', pausado: 'Pausado' };
   function C() { var c = DB.clients[DB.sel]; if (!c.refs) c.refs = []; return c; }
   function refsOf(b) { return b.refs || []; }
 
-  // ------------------------------------------------------------ dibujo de piezas (canvas)
+  // ------------------------------------------------------------ imágenes (logo, referencias)
   var logoCache = {};
   function logoImg(src) {
     if (!src) return Promise.resolve(null);
     if (logoCache[src]) return Promise.resolve(logoCache[src]);
     return new Promise(function (ok) { var i = new Image(); i.onload = function () { logoCache[src] = i; ok(i); }; i.onerror = function () { ok(null); }; i.src = src; });
-  }
-  function wrap(ctx, text, maxW) {
-    var words = String(text).split(/\s+/), out = [], cur = '';
-    words.forEach(function (w) { var t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { out.push(cur); cur = w; } else cur = t; });
-    if (cur) out.push(cur); return out;
-  }
-  function fit(ctx, text, maxW, maxH, start, min, weight, lh) {
-    for (var s = start; s >= min; s -= 4) { ctx.font = weight + ' ' + s + 'px Inter'; var l = wrap(ctx, text, maxW); if (l.length * s * lh <= maxH) return { size: s, lines: l }; }
-    ctx.font = weight + ' ' + min + 'px Inter'; return { size: min, lines: wrap(ctx, text, maxW) };
-  }
-  function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
-  function lite(h) {
-    var n = parseInt(h.slice(1), 16), r = n >> 16, g = n >> 8 & 255, b = n & 255, L = (.2126 * r + .7152 * g + .0722 * b) / 255;
-    if (L >= .6) return h; var t = Math.min(1, (.6 - L) / (1 - L) + .08);
-    return '#' + [r, g, b].map(function (v) { return Math.round(v + (255 - v) * t).toString(16).padStart(2, '0'); }).join('');
-  }
-  function hexA(h, a) { var n = parseInt(h.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
-
-  function cover(ctx, img, x, y, w, h) { var s = Math.max(w / img.width, h / img.height), iw = img.width * s, ih = img.height * s; ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih); }
-  function draw(cv, b, tpl, fmt, text, logo, photo) {
-    var W = FMT[fmt][0], H = FMT[fmt][1], ctx = cv.getContext('2d'), P = 84, tall = H > 1500;
-    cv.width = W; cv.height = H;
-    var g = ctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#070b12'); g.addColorStop(1, '#0f1622');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    var r1 = ctx.createRadialGradient(W * .85, H * .1, 0, W * .85, H * .1, W * .9); r1.addColorStop(0, hexA(b.c1, .55)); r1.addColorStop(1, hexA(b.c1, 0)); ctx.fillStyle = r1; ctx.fillRect(0, 0, W, H);
-    var r2 = ctx.createRadialGradient(W * .05, H * .95, 0, W * .05, H * .95, W * .8); r2.addColorStop(0, hexA(b.c2, .35)); r2.addColorStop(1, hexA(b.c2, 0)); ctx.fillStyle = r2; ctx.fillRect(0, 0, W, H);
-    if (tpl === 'foto' && photo) {
-      cover(ctx, photo, 0, 0, W, H);
-      var ov = ctx.createLinearGradient(0, 0, 0, H); ov.addColorStop(0, 'rgba(7,11,18,.72)'); ov.addColorStop(.18, 'rgba(7,11,18,.2)'); ov.addColorStop(.36, 'rgba(7,11,18,.25)'); ov.addColorStop(.52, 'rgba(7,11,18,.82)'); ov.addColorStop(1, 'rgba(7,11,18,.96)');
-      ctx.fillStyle = ov; ctx.fillRect(0, 0, W, H);
-    }
-    var top = tall ? 220 : P;
-    // marca
-    var lx = P;
-    if (logo) { var lh = 84, lw = Math.min(260, logo.width / logo.height * lh); ctx.drawImage(logo, P, top, lw, lh); lx = P + lw + 20; }
-    else { var mg = ctx.createLinearGradient(P, top, P + 84, top + 84); mg.addColorStop(0, b.c1); mg.addColorStop(1, b.c2); ctx.fillStyle = mg; rr(ctx, P, top, 84, 84, 22); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '900 44px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((b.nombre || '?').charAt(0).toUpperCase(), P + 42, top + 45); lx = P + 104; }
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#eef1f6'; ctx.font = '800 40px Inter'; ctx.fillText(b.nombre, lx, top + 42);
-    // CTA abajo
-    var ctaH = 112, ctaY = H - (tall ? 300 : P) - ctaH;
-    ctx.font = '800 38px Inter'; var cw = Math.min(W - 2 * P, ctx.measureText(b.cta).width + 150);
-    var cg = ctx.createLinearGradient(P, 0, P + cw, 0); cg.addColorStop(0, b.c1); cg.addColorStop(1, b.c2);
-    ctx.fillStyle = cg; rr(ctx, P, ctaY, cw, ctaH, 56); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(b.cta, P + 50, ctaY + ctaH / 2 + 2);
-    ctx.font = '800 40px Inter'; ctx.fillText('→', P + cw - 74, ctaY + ctaH / 2 + 2);
-    // cuerpo
-    var bodyTop = tall ? 600 : top + 84 + 80, bodyBot = ctaY - 60, bw = W - 2 * P, y;
-    ctx.textBaseline = 'alphabetic';
-    if (tpl === 'foto') {
-      var ff = fit(ctx, text, bw, tall ? 520 : 330, tall ? 130 : 104, 56, '900', 1.06), fy = bodyBot - ff.lines.length * ff.size * 1.06 + ff.size * .8;
-      ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 24;
-      ff.lines.forEach(function (l, i) { if (i === ff.lines.length - 1) { var tg0 = ctx.createLinearGradient(P, 0, P + ctx.measureText(l).width, 0); tg0.addColorStop(0, lite(b.c2)); tg0.addColorStop(1, '#ffffff'); ctx.fillStyle = tg0; } else ctx.fillStyle = '#fff'; ctx.fillText(l, P, fy); fy += ff.size * 1.06; });
-      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-    } else if (tpl === 'marco') {
-      var ff2 = fit(ctx, text, bw, tall ? 330 : 210, tall ? 104 : 80, 48, '900', 1.06), th = ff2.lines.length * ff2.size * 1.06;
-      var fh = bodyBot - bodyTop - th - 40;
-      ctx.save(); rr(ctx, P, bodyTop - 30, bw, fh, 36); ctx.clip(); if (photo) cover(ctx, photo, P, bodyTop - 30, bw, fh); ctx.restore();
-      ctx.strokeStyle = hexA(b.c2, .7); ctx.lineWidth = 4; rr(ctx, P, bodyTop - 30, bw, fh, 36); ctx.stroke();
-      y = bodyTop - 30 + fh + 40 + ff2.size * .85; ctx.fillStyle = '#fff';
-      ff2.lines.forEach(function (l) { ctx.fillText(l, P, y); y += ff2.size * 1.06; });
-    } else if (tpl === 'titular') {
-      var f = fit(ctx, text, bw, (bodyBot - bodyTop) * .72, tall ? 150 : 128, 64, '900', 1.06);
-      y = bodyTop + f.size;
-      ctx.fillStyle = '#ffffff';
-      f.lines.forEach(function (l, i) { if (i === f.lines.length - 1) { var tg = ctx.createLinearGradient(P, 0, P + ctx.measureText(l).width, 0); tg.addColorStop(0, lite(b.c2)); tg.addColorStop(1, '#ffffff'); ctx.fillStyle = tg; } ctx.fillText(l, P, y); y += f.size * 1.06; });
-      ctx.fillStyle = '#a5afc0'; var s2 = fit(ctx, b.bajada, bw, 200, 46, 30, '500', 1.35); s2.lines.forEach(function (l) { y += 8; ctx.fillText(l, P, y + s2.size * .4); y += s2.size * 1.35; });
-    } else if (tpl === 'dato') {
-      ctx.font = '900 ' + (tall ? 330 : 280) + 'px Inter'; var dg = ctx.createLinearGradient(P, 0, P + ctx.measureText(b.dato).width, 0); dg.addColorStop(0, lite(b.c2)); dg.addColorStop(1, '#ffffff');
-      var ds = tall ? 330 : 280; ctx.font = '900 ' + ds + 'px Inter'; while (ctx.measureText(b.dato).width > bw && ds > 120) { ds -= 10; ctx.font = '900 ' + ds + 'px Inter'; }
-      y = bodyTop + ds * .85; ctx.fillStyle = dg; ctx.fillText(b.dato, P - 8, y);
-      ctx.fillStyle = '#eef1f6'; var s3 = fit(ctx, b.datoTxt, bw, 160, 60, 36, '800', 1.15); y += 30; s3.lines.forEach(function (l) { y += s3.size * 1.15; ctx.fillText(l, P, y); });
-      ctx.fillStyle = '#a5afc0'; var s4 = fit(ctx, text, bw, 160, 44, 30, '500', 1.35); y += 24; s4.lines.forEach(function (l) { y += s4.size * 1.35; ctx.fillText(l, P, y); });
-    } else if (tpl === 'lista') {
-      var f2 = fit(ctx, text, bw, (bodyBot - bodyTop) * .38, tall ? 104 : 88, 52, '900', 1.08); y = bodyTop + f2.size; ctx.fillStyle = '#fff';
-      f2.lines.forEach(function (l) { ctx.fillText(l, P, y); y += f2.size * 1.08; });
-      y += 30; var items = lines(b.beneficios).slice(0, 4), rowH = Math.min(tall ? 150 : 118, (bodyBot - y) / Math.max(1, items.length));
-      items.forEach(function (it) {
-        ctx.fillStyle = 'rgba(255,255,255,.06)'; rr(ctx, P, y, bw, rowH - 18, 26); ctx.fill();
-        var cg2 = ctx.createLinearGradient(P + 24, 0, P + 84, 0); cg2.addColorStop(0, b.c1); cg2.addColorStop(1, b.c2); ctx.fillStyle = cg2;
-        ctx.beginPath(); ctx.arc(P + 58, y + (rowH - 18) / 2, 30, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); var cy = y + (rowH - 18) / 2; ctx.moveTo(P + 45, cy); ctx.lineTo(P + 54, cy + 10); ctx.lineTo(P + 72, cy - 10); ctx.stroke();
-        ctx.fillStyle = '#eef1f6'; var fs = Math.min(44, rowH * .36); ctx.font = '700 ' + fs + 'px Inter'; ctx.textBaseline = 'middle';
-        var t2 = it; while (ctx.measureText(t2).width > bw - 140 && t2.length > 4) t2 = t2.slice(0, -2); if (t2 !== it) t2 += '…';
-        ctx.fillText(t2, P + 112, cy + 2); ctx.textBaseline = 'alphabetic'; y += rowH;
-      });
-    } else {
-      ctx.fillStyle = 'rgba(255,255,255,.06)'; var boxY = bodyTop, boxH = bodyBot - bodyTop - 10; rr(ctx, P, boxY, bw, boxH, 40); ctx.fill();
-      ctx.fillStyle = hexA(lite(b.c2), .9); ctx.font = '900 200px Inter'; ctx.fillText('“', P + 40, boxY + 190);
-      ctx.fillStyle = '#fbbf24'; ctx.font = '700 52px Inter'; ctx.fillText('★★★★★', P + 56, boxY + 250);
-      var f3 = fit(ctx, '«' + b.testimonio + '»', bw - 112, boxH - 420, tall ? 70 : 60, 34, '700', 1.3); ctx.fillStyle = '#fff'; y = boxY + 300 + f3.size;
-      f3.lines.forEach(function (l) { ctx.fillText(l, P + 56, y); y += f3.size * 1.3; });
-      ctx.fillStyle = '#a5afc0'; ctx.font = '600 38px Inter'; ctx.fillText('— ' + b.autor, P + 56, boxY + boxH - 64);
-      ctx.fillStyle = hexA(b.c2, 1); ctx.font = '800 40px Inter'; var t3 = text; while (ctx.measureText(t3).width > bw && t3.length > 4) t3 = t3.slice(0, -2);
-    }
-    return cv;
   }
 
   // ------------------------------------------------------------ referencias
@@ -183,33 +104,41 @@
   }
 
   // ------------------------------------------------------------ generación
-  async function generate() {
-    var b = C(), logo = await logoImg(b.logo), T = lines(b.titulares).slice(0, 3), photos = [];
-    for (var r = 0; r < Math.min(3, refsOf(b).length); r++) { var im = await logoImg(refsOf(b)[r]); if (im) photos.push(im); }
-    if (!T.length) { toast('Escribí al menos un titular en la marca'); return; }
-    try { await document.fonts.load('900 80px Inter'); await document.fonts.load('700 40px Inter'); } catch (e) {}
-    var out = [];
+  function plan(b, nPhotos) {
+    // Qué sale en cada tanda: el gancho prueba los 3 titulares; el resto usa uno distinto cada uno.
+    var T = lines(b.titulares).slice(0, 3), out = [], i = 0, solo = Object.keys(TPL).filter(function (k) { return UI.tpl[k]; }).length === 1;
     Object.keys(TPL).forEach(function (t) {
       if (!UI.tpl[t]) return;
-      var photoT = t === 'foto' || t === 'marco';
-      if (photoT && !photos.length) return;
-      var texts = photoT ? photos.map(function (_, i) { return T[i % T.length]; }) : t === 'titular' || t === 'lista' ? T : [T[0]];
-      texts.forEach(function (tx, i) {
+      if (t === 'foto') { for (var p = 0; p < nPhotos; p++) out.push({ tpl: t, text: T[p % T.length], n: p + 1, photo: p }); return; }
+      if (t === 'gancho' || solo) { T.forEach(function (tx, k) { out.push({ tpl: t, text: tx, n: k + 1 }); }); return; }
+      i++; out.push({ tpl: t, text: T[i % T.length], n: (i % 3) + 1 });
+    });
+    return out;
+  }
+  async function generate() {
+    var b = C(), logo = await logoImg(b.logo), photos = [];
+    if (!lines(b.titulares).length) { toast('Escribí al menos un titular en la marca'); return; }
+    for (var r = 0; r < Math.min(3, refsOf(b).length); r++) { var im = await logoImg(refsOf(b)[r]); if (im) photos.push(im); }
+    await PIEZAS.fontsReady();
+    var out = [];
+    plan(b, photos.length).forEach(function (pl) {
+      estilos(b).forEach(function (es) {
         Object.keys(FMT).forEach(function (f) {
           if (!UI.fmt[f]) return;
-          out.push({ tpl: t, fmt: f, text: tx, n: i + 1, cv: draw(document.createElement('canvas'), b, t, f, tx, logo, photoT ? photos[i] : null) });
+          var ph = pl.tpl === 'foto' ? photos[pl.photo] : pl.tpl === 'notif' ? (photos[0] || null) : null;
+          out.push({ tpl: pl.tpl, fmt: f, text: pl.text, n: pl.n, estilo: es, cv: PIEZAS.draw(document.createElement('canvas'), b, { tpl: pl.tpl, fmt: f, text: pl.text, n: pl.n, estilo: es, logo: logo, photo: ph }) });
         });
       });
     });
     UI.out = out; UI.copies = copies(b);
     render(); toast(out.length + ' piezas generadas');
   }
-  function fname(p) { return slug(C().nombre) + '-' + slug(TPL[p.tpl]) + '-v' + p.n + '-' + p.fmt + '.png'; }
+  function fname(p) { return slug(C().nombre) + '-' + slug(TPL[p.tpl]) + '-v' + p.n + '-' + p.estilo + '-' + p.fmt + '.png'; }
   function dl(blob, name) { var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
   function toBlob(cv) { return new Promise(function (ok) { cv.toBlob(ok, 'image/png'); }); }
   function thumb(cv) { var t = document.createElement('canvas'), s = 420 / Math.max(cv.width, cv.height); t.width = Math.round(cv.width * s); t.height = Math.round(cv.height * s); t.getContext('2d').drawImage(cv, 0, 0, t.width, t.height); return t.toDataURL('image/jpeg', .82); }
   function addToLib(p) {
-    C().lib.unshift({ id: Date.now() + Math.random().toString(36).slice(2, 6), nombre: TPL[p.tpl] + ' v' + p.n, fmt: p.fmt, estado: 'nuevo', gasto: 0, res: 0, dias: 0, img: thumb(p.cv), fecha: new Date().toISOString().slice(0, 10) });
+    C().lib.unshift({ id: Date.now() + Math.random().toString(36).slice(2, 6), nombre: TPL[p.tpl] + ' v' + p.n + ' · ' + ESTILOS[p.estilo].toLowerCase(), tpl: p.tpl, fmt: p.fmt, estado: 'nuevo', gasto: 0, res: 0, dias: 0, img: thumb(p.cv), fecha: new Date().toISOString().slice(0, 10) });
     save();
   }
 
@@ -217,14 +146,14 @@
   async function seed() {
     var any = Object.keys(DB.clients).some(function (k) { return DB.clients[k].lib.length; });
     if (any) return;
-    try { await document.fonts.load('900 80px Inter'); } catch (e) {}
-    var demo = { norte: [['titular', 0, 'ganador', 412, 168, 21], ['dato', 0, 'activo', 188, 61, 9], ['lista', 1, 'cansado', 295, 74, 26], ['testimonio', 0, 'activo', 96, 35, 6], ['titular', 2, 'pausado', 60, 9, 4]],
-      delta: [['dato', 0, 'ganador', 520, 233, 18], ['titular', 1, 'activo', 140, 52, 7]], litoral: [['lista', 0, 'cansado', 380, 61, 31], ['titular', 0, 'cansado', 210, 33, 24]], sur: [] };
+    await PIEZAS.fontsReady();
+    var demo = { norte: [['chat', 'oscuro', 'ganador', 412, 168, 21], ['gancho', 'claro', 'ganador', 260, 121, 14], ['vs', 'oscuro', 'activo', 188, 61, 9], ['resena', 'claro', 'activo', 96, 35, 6], ['dato', 'oscuro', 'cansado', 295, 74, 26], ['pasos', 'claro', 'pausado', 60, 9, 4]],
+      delta: [['notif', 'oscuro', 'ganador', 520, 233, 18], ['gancho', 'oscuro', 'activo', 140, 52, 7]], litoral: [['dato', 'claro', 'cansado', 380, 61, 31], ['gancho', 'oscuro', 'cansado', 210, 33, 24]], sur: [] };
     Object.keys(demo).forEach(function (k) {
       var b = DB.clients[k], T = lines(b.titulares);
       demo[k].forEach(function (d, i) {
-        var cv = draw(document.createElement('canvas'), b, d[0], '1x1', T[d[1]] || T[0], null);
-        b.lib.push({ id: k + i, nombre: TPL[d[0]] + ' v' + (d[1] + 1), fmt: '1x1', estado: d[2], gasto: d[3], res: d[4], dias: d[5], img: thumb(cv), fecha: '2026-11-' + String(10 + i).padStart(2, '0') });
+        var cv = PIEZAS.draw(document.createElement('canvas'), b, { tpl: d[0], fmt: '1x1', text: T[i % T.length], n: (i % 3) + 1, estilo: d[1] });
+        b.lib.push({ id: k + i, nombre: TPL[d[0]] + ' · ' + d[1], tpl: d[0], fmt: '1x1', estado: d[2], gasto: d[3], res: d[4], dias: d[5], img: thumb(cv), fecha: '2026-11-' + String(10 + i).padStart(2, '0') });
       });
     });
     save();
@@ -256,6 +185,7 @@
     bind(b);
   }
   function marca(b) {
+    function sec(t, d) { return '<div class="kit-sec"><h3>' + t + '</h3>' + (d ? '<p>' + d + '</p>' : '') + '</div>'; }
     function f(k, l, help, ta) { return '<label class="field' + (ta ? ' full' : '') + '">' + l + (ta ? '<textarea data-k="' + k + '">' + esc(b[k]) + '</textarea>' : '<input data-k="' + k + '" value="' + esc(b[k]) + '">') + (help ? '<small class="help">' + help + '</small>' : '') + '</label>'; }
     return '<article class="card" style="--c:var(--violet)"><div class="ch"><span class="ico">' + IC.brush + '</span><div><h2>Marca de ' + esc(b.nombre) + '</h2><p class="sub">Se carga una sola vez. Todo lo que generes sale con estos datos.</p></div></div><div class="kit">' +
       f('nombre', 'Nombre de la marca') +
@@ -265,16 +195,26 @@
         '<div class="refs">' + refsOf(b).map(function (r, i) { return '<div class="ref"><img src="' + r + '" alt="Referencia ' + (i + 1) + '"><button type="button" class="rm" data-rmref="' + i + '" aria-label="Quitar referencia ' + (i + 1) + '">×</button>' + (i < 3 ? '<span>Se usa</span>' : '') + '</div>'; }).join('') +
         (refsOf(b).length < 6 ? '<label class="ref add">+<span>Agregar</span><input type="file" id="refs" accept="image/*" multiple hidden></label>' : '') + '</div>' +
         (refsOf(b).length ? '<div><button type="button" class="btn sm" id="pal">Tomar los colores de las referencias</button></div>' : '') + '</div>' +
-      f('cta', 'Botón (llamado a la acción)') +
-      f('titulares', 'Titulares', 'Uno por renglón. Se usan los 3 primeros para las variantes.', true) +
-      f('beneficios', 'Beneficios', 'Uno por renglón, hasta 4.', true) +
-      f('bajada', 'Bajada (frase debajo del titular)') + f('dato', 'Número destacado (ej: 24 h, 5 min)') + f('datoTxt', 'Texto del número') +
-      f('testimonio', 'Testimonio de un cliente', '', true) + f('autor', 'Quién lo dice') +
+      '<div class="field">Estilo de las piezas<div class="picks" style="margin-top:0">' + Object.keys(ESTILOS).map(function (k) { return '<button type="button" class="pick" data-estilo="' + k + '" aria-pressed="' + ((b.estilo || 'ambos') === k) + '">' + ESTILOS[k] + '</button>'; }).join('') + '</div><small class="help">"Los dos" genera cada pieza en versión oscura y clara para probar cuál rinde más.</small></div>' +
+      sec('Mensaje principal', 'Escribí entre asteriscos la parte que querés resaltar: Te respondemos en *menos de 5 minutos*.') +
+      f('titulares', 'Titulares', 'Uno por renglón. Se usan los 3 primeros: cada uno sale como una variante distinta.', true) +
+      f('bajada', 'Bajada (frase debajo del titular)') + f('cta', 'Botón (llamado a la acción)') + f('sello', 'Sello (ej: Atención 24/7)', 'Va en una etiqueta girada. Dejalo vacío si no querés.') +
+      f('beneficios', 'Beneficios', 'Uno por renglón, hasta 4. Se usan en el gancho y en la comparación.', true) +
+      sec('Conversación de WhatsApp', 'Así se ve la charla en la pieza "Conversación".') +
+      f('chatQ', 'Mensaje del cliente') + f('chatA', 'Respuesta de la marca') + f('chatQ2', 'Segundo mensaje del cliente') + f('chatA2', 'Segunda respuesta') + f('nota', 'Nota escrita a mano (ej: ¡En 2 minutos!)') +
+      sec('Prueba y confianza', '') +
+      f('testimonio', 'Testimonio de un cliente', 'Usá uno real: los clientes detectan los inventados.', true) + f('autor', 'Quién lo dice') +
+      f('dato', 'Número destacado (ej: 2 min, 24/7)') + f('datoTxt', 'Texto del número', 'Podés resaltar con asteriscos.') +
+      sec('Comparación, pasos y notificaciones', '') +
+      f('otros', 'Cómo lo hacen los demás', 'Uno por renglón: va en la columna "Otros" de la comparación.', true) +
+      f('pasos', 'Pasos', 'Tres renglones: cómo empieza alguien con vos.', true) +
+      f('notifs', 'Notificaciones', 'Un mensaje por renglón.', true) +
       '</div><div class="gen-bar"><span class="muted" style="font-size:13px">Revisá que los textos cumplan las políticas de publicidad de Meta.</span><button class="btn pri" data-s="gen">Guardar y generar →</button></div></article>';
   }
   function gen(b) {
-    var h = aiCard(b) + '<article class="card" style="--c:var(--green)"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Generar piezas para ' + esc(b.nombre) + '</h2><p class="sub">Elegí plantillas y formatos. Cada titular da una variante distinta.</p></div></div>' +
-      '<span class="lbl" style="display:block;margin-top:16px">Plantillas</span>' + (refsOf(b).length ? '' : '<p class="muted" style="font-size:13px;margin:6px 0 0">Las plantillas con foto necesitan imágenes de referencia. <button class="link" data-s="marca">Agregarlas en la marca</button></p>') + '<div class="picks">' + Object.keys(TPL).map(function (k) { return '<button class="pick" data-tpl="' + k + '" aria-pressed="' + !!UI.tpl[k] + '">' + TPL[k] + '</button>'; }).join('') + '</div>' +
+    var h = aiCard(b) + '<article class="card" style="--c:var(--green)"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Generar piezas para ' + esc(b.nombre) + '</h2><p class="sub">Formatos probados en anuncios de respuesta directa, con la marca del cliente.</p></div></div>' +
+      '<span class="lbl" style="display:block;margin-top:16px">Plantillas</span>' + (refsOf(b).length ? '' : '<p class="muted" style="font-size:13px;margin:6px 0 0">La plantilla Foto necesita imágenes de referencia. <button class="link" data-s="marca">Agregalas en la marca</button></p>') + '<div class="tplgrid">' + Object.keys(TPL).map(function (k) { var dis = PIEZAS.TPL[k].foto && !refsOf(b).length; return '<button class="tplpick" data-tpl="' + k + '" aria-pressed="' + (!!UI.tpl[k] && !dis) + '"' + (dis ? ' disabled' : '') + '><b>' + TPL[k] + '</b><small>' + PIEZAS.TPL[k].d + '</small></button>'; }).join('') + '</div>' +
+      '<span class="lbl" style="display:block;margin-top:16px">Estilo</span><div class="picks">' + Object.keys(ESTILOS).map(function (k) { return '<button class="pick" data-estilo="' + k + '" aria-pressed="' + ((b.estilo || 'ambos') === k) + '">' + ESTILOS[k] + '</button>'; }).join('') + '</div>' +
       '<span class="lbl" style="display:block;margin-top:16px">Formatos</span><div class="picks">' + Object.keys(FMT).map(function (k) { return '<button class="pick" data-fmt="' + k + '" aria-pressed="' + !!UI.fmt[k] + '">' + FMT[k][2] + ' · ' + FMT[k][3] + '</button>'; }).join('') + '</div>' +
       '<div class="gen-bar"><span class="muted" style="font-size:13.5px">' + count() + ' piezas por tanda</span><div class="actions">' + (UI.out.length ? '<button class="btn" id="zip">' + IC.dl + ' Descargar todo (.zip)</button><button class="btn" id="saveall">Guardar todo en biblioteca</button>' : '') + '<button class="btn pri" id="go">' + IC.spark + ' Generar</button></div></div>';
     if (UI.out.length) h += '<div class="out" id="out"></div>';
@@ -330,18 +270,18 @@
     im.src = src;
   }
 
-  function count() { var t = 0, np = Math.min(3, refsOf(C()).length); Object.keys(TPL).forEach(function (k) { if (UI.tpl[k]) t += (k === 'foto' || k === 'marco') ? np : (k === 'titular' || k === 'lista') ? Math.min(3, Math.max(1, lines(C().titulares).length)) : 1; }); return t * Object.keys(FMT).filter(function (k) { return UI.fmt[k]; }).length; }
+  function count() { var ph = Math.min(3, refsOf(C()).length); return plan(C(), ph).length * estilos(C()).length * Object.keys(FMT).filter(function (k) { return UI.fmt[k]; }).length; }
   function lib(b) {
     var nd = needs(b), list = b.lib.filter(function (x) { return UI.filter === 'todos' || x.estado === UI.filter; });
     var h = '<article class="card" style="--c:var(--amber)"><div class="ch"><span class="ico">' + IC.lib + '</span><div><h2>Biblioteca de ' + esc(b.nombre) + '</h2><p class="sub">' + b.lib.length + ' piezas · ' + nd.act + ' en circulación</p></div></div>';
     if (nd.alert) h += '<div class="lib-alert">⚠️ <span>' + (nd.tired ? '<b>' + nd.tired + (nd.tired === 1 ? ' anuncio cansado' : ' anuncios cansados') + '.</b> ' : '') + (nd.act < 3 ? 'Solo ' + nd.act + ' en circulación (conviene tener al menos 3). ' : '') + 'Es momento de generar piezas nuevas.</span><button class="btn sm pri" data-s="gen">Generar</button></div>';
     h += '<div class="filters">' + ['todos'].concat(EST).map(function (e) { var c = e === 'todos' ? b.lib.length : b.lib.filter(function (x) { return x.estado === e; }).length; return '<button class="pick" data-f="' + e + '" aria-pressed="' + (UI.filter === e) + '">' + (e === 'todos' ? 'Todos' : ESTL[e]) + ' (' + c + ')</button>'; }).join('') + '</div>';
     if (!list.length) h += '<div class="empty-lib">' + (b.lib.length ? 'No hay piezas con este estado.' : 'Todavía no hay piezas. Generá las primeras y guardalas acá.') + '</div>';
-    else h += '<div class="lib">' + list.sort(function (a, c) { return EST.indexOf(a.estado) === EST.indexOf(c.estado) ? (c.res / (c.gasto || 1)) - (a.res / (a.gasto || 1)) : 0; }).map(function (x) {
+    else h += '<div class="lib">' + list.sort(function (a, c) { var O = ['ganador', 'activo', 'nuevo', 'cansado', 'pausado'], d = O.indexOf(a.estado) - O.indexOf(c.estado); return d || (c.res / (c.gasto || 1)) - (a.res / (a.gasto || 1)); }).map(function (x) {
       var cpr = x.res ? x.gasto / x.res : null;
       return '<div class="piece"><div class="cv"><img src="' + x.img + '" alt="' + esc(x.nombre) + '" style="max-width:100%;max-height:100%;border-radius:6px"></div><div class="meta"><span class="est ' + x.estado + '">' + ESTL[x.estado] + '</span><b>' + esc(x.nombre) + '</b><span>' + FMT[x.fmt][2] + ' · ' + (x.dias ? x.dias + ' días en circulación' : 'sin publicar') + '</span>' +
-        '<div class="kpis3"><div>Gasto<b>' + (x.gasto ? usd(x.gasto) : '—') + '</b></div><div>Resultados<b>' + (x.res || '—') + '</b></div><div>Costo<b>' + (cpr ? usd(cpr) : '—') + '</b></div></div>' +
-        '<select data-est="' + x.id + '" aria-label="Estado">' + EST.map(function (e) { return '<option value="' + e + '"' + (e === x.estado ? ' selected' : '') + '>' + ESTL[e] + '</option>'; }).join('') + '</select></div></div>';
+        '<div class="kpis3"><div>Gasto<b>' + (x.gasto ? 'US$ ' + Math.round(x.gasto).toLocaleString('es-AR') : '—') + '</b></div><div>Resultados<b>' + (x.res || '—') + '</b></div><div>Costo<b>' + (cpr ? usd(cpr) : '—') + '</b></div></div>' +
+        '<select data-est="' + x.id + '" aria-label="Estado">' + EST.map(function (e) { return '<option value="' + e + '"' + (e === x.estado ? ' selected' : '') + '>' + ESTL[e] + '</option>'; }).join('') + '</select>' + ((x.estado === 'ganador' || x.estado === 'activo') && x.tpl ? '<button class="btn sm pri" data-vari="' + x.id + '">Hacer variantes</button>' : '') + '</div></div>';
     }).join('') + '</div>';
     h += '<p class="muted" style="font-size:12.5px;margin-top:14px">Por ahora el estado lo marcás vos. Cuando conectemos el centro de control con Meta, el gasto, los resultados y el estado se completan solos.</p></article>';
     return h;
@@ -373,6 +313,8 @@
     if ($('#pal')) $('#pal').onclick = async function () { var p = await palette(refsOf(b)); if (!p) { toast('No encontré colores marcados en las referencias'); return; } b.c1 = p[0]; b.c2 = p[1]; save(); render(); toast('Colores tomados de las referencias'); };
     if ($('#nologo')) $('#nologo').onclick = function () { b.logo = ''; save(); render(); };
     $$('[data-tpl]').forEach(function (x) { x.onclick = function () { UI.tpl[x.dataset.tpl] = !UI.tpl[x.dataset.tpl]; render(); }; });
+    $$('[data-estilo]').forEach(function (x) { x.onclick = function () { b.estilo = x.dataset.estilo; save(); render(); }; });
+    $$('[data-vari]').forEach(function (x) { x.onclick = function () { var it = b.lib.find(function (y) { return y.id === x.dataset.vari; }); if (!it || !it.tpl) return; Object.keys(UI.tpl).forEach(function (k) { UI.tpl[k] = k === it.tpl; }); UI.step = 'gen'; render(); generate(); toast('Generando variantes de este ganador'); }; });
     $$('[data-fmt]').forEach(function (x) { x.onclick = function () { UI.fmt[x.dataset.fmt] = !UI.fmt[x.dataset.fmt]; render(); }; });
     if ($('#go')) $('#go').onclick = function () { if (!count()) { toast('Elegí al menos una plantilla y un formato'); return; } generate(); };
     if ($('#out')) {
