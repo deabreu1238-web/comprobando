@@ -546,7 +546,7 @@
     var act = S.clients.filter(function (c) { return c.activo; }).length;
     var h = '<div class="wrap"><div class="top"><div class="brand">' + MARK + esc(CFG.marca || 'PanelPro') + '</div><div class="who"><span class="chip admin">Admin</span><span>' + esc(S.me.email) + '</span><button class="btn sm" id="out">Salir</button></div></div>' +
       '<div class="head"><div><span class="lbl">Administración</span><h1>Clientes</h1><p class="range">' + act + ' activos de ' + S.clients.length + '</p></div>' +
-      '<div class="actions"><input id="q" class="btn" style="min-width:220px;cursor:text" placeholder="Buscar por nombre o email" value="' + esc(S.q) + '"></div></div>' +
+      '<div class="actions"><a class="btn" href="creativos.html">Banco creativo</a><input id="q" class="btn" style="min-width:220px;cursor:text" placeholder="Buscar por nombre o email" value="' + esc(S.q) + '"></div></div>' +
       '<article class="card" style="--c:var(--blue)"><div class="tbl-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Estado</th><th>Último día cargado</th><th>Ganancia 30 días</th><th></th></tr></thead><tbody>' +
       (list.map(function (c) {
         return '<tr><td><b>' + esc(c.nombre || '—') + '</b><br><span class="muted">' + esc(c.email) + '</span></td><td><span class="st ' + (c.activo ? 'on' : 'off') + '">' + (c.activo ? 'Activo' : 'Suspendido') + '</span></td>' +

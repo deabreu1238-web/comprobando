@@ -1,6 +1,8 @@
 // Banco creativo PanelPro: marca por cliente, generador de anuncios en serie y biblioteca con rendimiento.
 (function () {
   'use strict';
+  var CFG = window.CAJA_CONFIG || {};
+  var SB = (CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase) ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true } }) : null;
   var app = document.getElementById('app');
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -28,7 +30,7 @@
     litoral: brand('Litoral', '#059669', '#a3e635'),
     sur: brand('Sur', '#ea580c', '#fbbf24'),
   } };
-  var UI = { step: 'gen', tpl: { foto: true, marco: true, titular: true, dato: true, lista: true, testimonio: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos' };
+  var UI = { step: 'gen', tpl: { foto: true, marco: true, titular: true, dato: true, lista: true, testimonio: true }, fmt: { '1x1': true, '4x5': false, '9x16': true }, out: [], copies: [], filter: 'todos', ai: { prompt: '', sel: [0, 1, 2], size: '1024x1024', n: 2, q: 'medium', busy: false, imgs: [], err: '' } };
   var FMT = { '1x1': [1080, 1080, 'Cuadrado 1:1', 'Feed'], '4x5': [1080, 1350, 'Vertical 4:5', 'Feed'], '9x16': [1080, 1920, 'Historia 9:16', 'Historias y Reels'] };
   var TPL = { foto: 'Foto de fondo', marco: 'Foto + titular', titular: 'Titular grande', dato: 'Número destacado', lista: 'Lista de beneficios', testimonio: 'Testimonio' };
   var EST = ['nuevo', 'activo', 'ganador', 'cansado', 'pausado'];
@@ -271,7 +273,7 @@
       '</div><div class="gen-bar"><span class="muted" style="font-size:13px">Revisá que los textos cumplan las políticas de publicidad de Meta.</span><button class="btn pri" data-s="gen">Guardar y generar →</button></div></article>';
   }
   function gen(b) {
-    var h = '<article class="card" style="--c:var(--green)"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Generar piezas para ' + esc(b.nombre) + '</h2><p class="sub">Elegí plantillas y formatos. Cada titular da una variante distinta.</p></div></div>' +
+    var h = aiCard(b) + '<article class="card" style="--c:var(--green)"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Generar piezas para ' + esc(b.nombre) + '</h2><p class="sub">Elegí plantillas y formatos. Cada titular da una variante distinta.</p></div></div>' +
       '<span class="lbl" style="display:block;margin-top:16px">Plantillas</span>' + (refsOf(b).length ? '' : '<p class="muted" style="font-size:13px;margin:6px 0 0">Las plantillas con foto necesitan imágenes de referencia. <button class="link" data-s="marca">Agregarlas en la marca</button></p>') + '<div class="picks">' + Object.keys(TPL).map(function (k) { return '<button class="pick" data-tpl="' + k + '" aria-pressed="' + !!UI.tpl[k] + '">' + TPL[k] + '</button>'; }).join('') + '</div>' +
       '<span class="lbl" style="display:block;margin-top:16px">Formatos</span><div class="picks">' + Object.keys(FMT).map(function (k) { return '<button class="pick" data-fmt="' + k + '" aria-pressed="' + !!UI.fmt[k] + '">' + FMT[k][2] + ' · ' + FMT[k][3] + '</button>'; }).join('') + '</div>' +
       '<div class="gen-bar"><span class="muted" style="font-size:13.5px">' + count() + ' piezas por tanda</span><div class="actions">' + (UI.out.length ? '<button class="btn" id="zip">' + IC.dl + ' Descargar todo (.zip)</button><button class="btn" id="saveall">Guardar todo en biblioteca</button>' : '') + '<button class="btn pri" id="go">' + IC.spark + ' Generar</button></div></div>';
@@ -281,6 +283,53 @@
       UI.copies.map(function (c, i) { return '<div class="copy"><div><small>' + c[0] + '</small><p>' + esc(c[1]) + '</p></div><button class="btn sm" data-copy="' + i + '">Copiar</button></div>'; }).join('') + '</div></article>';
     return h;
   }
+  // ------------------------------------------------------------ imágenes con IA (OpenAI)
+  var AI_SIZES = { '1024x1024': 'Cuadrada', '1024x1536': 'Vertical', '1536x1024': 'Horizontal' };
+  var AI_Q = { low: ['Borrador', 'unos US$ 0,02 c/u'], medium: ['Normal', 'unos US$ 0,05 c/u'], high: ['Alta', 'unos US$ 0,20 c/u'] };
+  function aiCard(b) {
+    var A = UI.ai, R = refsOf(b);
+    var h = '<article class="card ai" style="--c:var(--violet);margin-bottom:14px"><div class="ch"><span class="ico">' + IC.spark + '</span><div><h2>Imágenes con IA</h2><p class="sub">ChatGPT crea fotos nuevas para ' + esc(b.nombre) + ', guiándose por sus referencias. Después las usás en las plantillas.</p></div></div>';
+    if (!SB) h += '<p class="ai-note">Vista previa: la generación con IA funciona cuando el banco creativo está en tu Netlify y conectado a tu Supabase.</p>';
+    h += '<label class="field" style="margin-top:14px">Qué querés en la imagen<textarea id="ai_p" rows="3" placeholder="Ej: persona joven sonriendo mientras mira el celular, de noche en la ciudad, luces cálidas, estilo foto real">' + esc(A.prompt) + '</textarea></label>';
+    if (R.length) h += '<span class="lbl" style="display:block;margin-top:14px">Referencias que usa (hasta 3)</span><div class="refs">' + R.map(function (r, i) { var on = A.sel.indexOf(i) > -1; return '<button type="button" class="ref pickref" data-aref="' + i + '" aria-pressed="' + on + '" aria-label="Usar referencia ' + (i + 1) + '"><img src="' + r + '" alt="">' + (on ? '<span>Usa</span>' : '') + '</button>'; }).join('') + '</div>';
+    else h += '<p class="muted" style="font-size:13px;margin:10px 0 0">Sin referencias, la IA crea desde cero. Para que respete el estilo del cliente, <button class="link" data-s="marca">subí referencias en la marca</button>.</p>';
+    h += '<div class="ai-opts"><label class="field">Formato<select id="ai_s">' + Object.keys(AI_SIZES).map(function (k) { return '<option value="' + k + '"' + (k === A.size ? ' selected' : '') + '>' + AI_SIZES[k] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field">Cantidad<select id="ai_n">' + [1, 2, 3, 4].map(function (k) { return '<option' + (k === A.n ? ' selected' : '') + '>' + k + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field">Calidad<select id="ai_q">' + Object.keys(AI_Q).map(function (k) { return '<option value="' + k + '"' + (k === A.q ? ' selected' : '') + '>' + AI_Q[k][0] + ' · ' + AI_Q[k][1] + '</option>'; }).join('') + '</select></label></div>' +
+      '<label class="ai-chk"><input type="checkbox" id="ai_t"' + (A.noText !== false ? ' checked' : '') + '> Sin textos dentro de la imagen (los pone la plantilla)</label>' +
+      '<div class="gen-bar"><span class="muted" style="font-size:13px">' + (A.busy ? 'Generando… puede tardar hasta un minuto.' : 'Revisá que la imagen cumpla las políticas de Meta antes de usarla.') + '</span><button class="btn pri" id="ai_go"' + (A.busy || !SB ? ' disabled' : '') + '>' + (A.busy ? '<span class="spin"></span> Generando' : IC.spark + ' Generar con IA') + '</button></div>';
+    if (A.err) h += '<p class="err" role="alert" style="margin-top:10px">' + esc(A.err) + '</p>';
+    if (A.imgs.length) h += '<div class="out">' + A.imgs.map(function (src, i) { return '<div class="piece"><div class="cv"><img src="' + src + '" alt="Imagen generada ' + (i + 1) + '" style="max-width:100%;max-height:230px;border-radius:6px"></div><div class="meta"><b>Imagen IA ' + (i + 1) + '</b><div class="acts"><button class="btn sm" data-aidl="' + i + '">Descargar</button><button class="btn sm pri" data-aiuse="' + i + '">Usar</button></div></div></div>'; }).join('') + '</div>';
+    return h + '</article>';
+  }
+  function aiPrompt(b, raw, hasRefs, noText) {
+    return 'Imagen fotográfica para un anuncio de Facebook e Instagram de la marca "' + b.nombre + '". ' + raw.trim().replace(/[.!\s]*$/, '.') +
+      (hasRefs ? ' Usá las imágenes adjuntas como referencia de estilo: respetá su paleta de colores, la iluminación, el tipo de escena y la estética general.' : '') +
+      ' Paleta de la marca: ' + b.c1 + ' y ' + b.c2 + '.' + (noText ? ' No incluyas textos, letras, números ni logos dentro de la imagen.' : '') +
+      ' Dejá espacio libre en la parte inferior para superponer un titular. Calidad profesional, nítida, lista para publicidad.';
+  }
+  async function runAI(b) {
+    var A = UI.ai, R = refsOf(b);
+    if (A.prompt.trim().length < 5) { A.err = 'Describí qué querés en la imagen.'; render(); return; }
+    var refs = A.sel.filter(function (i) { return R[i]; }).slice(0, 3).map(function (i) { return R[i]; });
+    A.busy = true; A.err = ''; render();
+    try {
+      var r = await SB.functions.invoke('generar-imagen', { body: { prompt: aiPrompt(b, A.prompt, refs.length > 0, A.noText !== false), refs: refs, size: A.size, quality: A.q, n: A.n } });
+      var msg = null;
+      if (r.error) { try { msg = (await r.error.context.json()).error; } catch (e) { msg = 'No se pudo conectar con la IA. Revisá que la función generar-imagen esté publicada.'; } }
+      else if (!r.data || !r.data.images || !r.data.images.length) msg = (r.data && r.data.error) || 'La IA no devolvió imágenes. Probá de nuevo.';
+      if (msg) A.err = msg; else { A.imgs = r.data.images.concat(A.imgs).slice(0, 12); toast(r.data.images.length === 1 ? 'Imagen lista' : r.data.images.length + ' imágenes listas'); }
+    } catch (e) { A.err = 'No se pudo conectar con la IA. Revisá tu conexión.'; }
+    A.busy = false; render();
+  }
+  function useAI(b, src) {
+    var im = new Image();
+    im.onload = function () { var s = Math.min(1, 1080 / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * s); c.height = Math.round(im.height * s); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      b.refs.unshift(c.toDataURL('image/jpeg', .85)); if (b.refs.length > 6) b.refs.length = 6; UI.ai.sel = UI.ai.sel.map(function (i) { return i + 1; }).filter(function (i) { return i < 6; });
+      save(); UI.tpl.foto = UI.tpl.marco = true; render(); toast('Agregada a las referencias: ya sale en las plantillas con foto'); };
+    im.src = src;
+  }
+
   function count() { var t = 0, np = Math.min(3, refsOf(C()).length); Object.keys(TPL).forEach(function (k) { if (UI.tpl[k]) t += (k === 'foto' || k === 'marco') ? np : (k === 'titular' || k === 'lista') ? Math.min(3, Math.max(1, lines(C().titulares).length)) : 1; }); return t * Object.keys(FMT).filter(function (k) { return UI.fmt[k]; }).length; }
   function lib(b) {
     var nd = needs(b), list = b.lib.filter(function (x) { return UI.filter === 'todos' || x.estado === UI.filter; });
@@ -299,7 +348,18 @@
   }
 
   function bind(b) {
-    $$('[data-c]').forEach(function (x) { x.onclick = function () { DB.sel = x.dataset.c; UI.out = []; UI.copies = []; save(); render(); }; });
+    if ($('#ai_p')) {
+      $('#ai_p').oninput = function () { UI.ai.prompt = this.value; };
+      $('#ai_s').onchange = function () { UI.ai.size = this.value; };
+      $('#ai_n').onchange = function () { UI.ai.n = +this.value; };
+      $('#ai_q').onchange = function () { UI.ai.q = this.value; };
+      $('#ai_t').onchange = function () { UI.ai.noText = this.checked; };
+      $$('[data-aref]').forEach(function (x) { x.onclick = function () { var i = +x.dataset.aref, k = UI.ai.sel.indexOf(i); if (k > -1) UI.ai.sel.splice(k, 1); else if (UI.ai.sel.length < 3) UI.ai.sel.push(i); else { toast('Máximo 3 referencias'); return; } render(); }; });
+      if ($('#ai_go')) $('#ai_go').onclick = function () { runAI(b); };
+      $$('[data-aidl]').forEach(function (x) { x.onclick = async function () { var r = await fetch(UI.ai.imgs[x.dataset.aidl]); dl(await r.blob(), slug(b.nombre) + '-ia-' + (+x.dataset.aidl + 1) + '.png'); }; });
+      $$('[data-aiuse]').forEach(function (x) { x.onclick = function () { useAI(b, UI.ai.imgs[x.dataset.aiuse]); }; });
+    }
+    $$('[data-c]').forEach(function (x) { x.onclick = function () { DB.sel = x.dataset.c; UI.out = []; UI.copies = []; UI.ai.imgs = []; UI.ai.err = ''; UI.ai.sel = [0, 1, 2]; save(); render(); }; });
     $$('[data-s]').forEach(function (x) { x.onclick = function () { UI.step = x.dataset.s; render(); if (UI.step === 'gen' && x.closest('.gen-bar')) generate(); }; });
     $('#addc').onclick = function () { var n = prompt('Nombre del cliente'); if (!n) return; var k = slug(n) || 'c' + Date.now(); DB.clients[k] = brand(n.trim(), '#2b4dff', '#38d9f0'); DB.sel = k; UI.step = 'marca'; save(); render(); };
     $$('[data-k]').forEach(function (i) { i.oninput = function () { b[i.dataset.k] = i.value; save(); if (i.dataset.k === 'nombre') $$('[data-c="' + DB.sel + '"]').forEach(function (t) { t.lastChild.nodeType === 3 ? (t.lastChild.textContent = i.value) : 0; }); }; });

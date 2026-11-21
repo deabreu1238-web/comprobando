@@ -65,3 +65,14 @@
 .ref.add { display: grid; place-items: center; align-content: center; gap: 2px; cursor: pointer; border-style: dashed; color: var(--text2); font-size: 28px; font-weight: 300 }
 .ref.add span { position: static; background: none; color: var(--muted); font-size: 11px; padding: 0 }
 .ref.add:focus-within { outline: 2px solid var(--brand) }
+.ai-note { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: rgba(177,140,255,.1); border: 1px solid rgba(177,140,255,.3); color: var(--text2); font-size: 13.5px }
+.ai textarea { width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line2); background: var(--bg2); font: 500 14.5px/1.5 var(--f); color: var(--text); resize: vertical }
+.ai-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px }
+@media (max-width: 640px) { .ai-opts { grid-template-columns: 1fr } }
+.ai-chk { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 13.5px; color: var(--text2); cursor: pointer }
+.ai-chk input { width: 18px; height: 18px; accent-color: var(--green) }
+.pickref { padding: 0; cursor: pointer; opacity: .55 }
+.pickref[aria-pressed="true"] { opacity: 1; border-color: var(--green); box-shadow: 0 0 0 2px rgba(46,229,157,.4) }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin .8s linear infinite; display: inline-block }
+@keyframes spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s } }
