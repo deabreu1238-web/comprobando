@@ -76,6 +76,9 @@
 
   // ------------------------------------------------------------ sesión
   async function start() {
+    if (DEMO && location.hash === '#admin') {
+      S.me = { id: 'admin', email: 'vos@panelpro', nombre: 'Admin', rol: 'admin', activo: true }; return renderAdmin();
+    }
     if (DEMO) {
       S.me = { id: 'demo', email: 'demo@panelpro', nombre: 'Cliente de ejemplo', rol: 'cliente', activo: true, objetivo_diario: 650000 };
       S.viewing = S.me; S.regs = demoRegs(); return renderDash();
@@ -528,46 +531,182 @@
   }
 
   // ------------------------------------------------------------ administración
+  var NAV = [['clientes', 'Clientes', 'index.html'], ['banco', 'Banco creativo', 'creativos.html']];
+  function shell(active, right) {
+    return '<div class="top"><div class="brand">' + MARK + esc(CFG.marca || 'PanelPro') + '</div>' +
+      '<nav class="nav" aria-label="Secciones">' + NAV.map(function (n) { return n[0] === active ? '<span aria-current="page">' + n[1] + '</span>' : '<a href="' + n[2] + '">' + n[1] + '</a>'; }).join('') + '</nav>' +
+      '<div class="who">' + (DEMO ? '<span class="chip demo">Demo</span>' : '') + '<span class="chip admin">Admin</span>' + (right || '') + '</div></div>';
+  }
+  function cur(v, m) { return m === 'ARS' ? full(v) : 'US$ ' + fmtN(Math.round(n(v))); }
+  function addMonth(s) { var d = parse(s), day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + 1); var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); return iso(d); }
+  function daysBetween(a, b) { return Math.round((parse(b) - parse(a)) / 864e5); }
+  function waTo(num, text) { var d = String(num || '').replace(/\D/g, ''); return d ? 'https://wa.me/' + d + '?text=' + encodeURIComponent(text) : null; }
+
+  function demoAdmin() {
+    var names = [['Norte', 500, 3, 0, '5491100000001'], ['Delta', 700, -2, 1, '5491100000002'], ['Litoral', 500, 12, 5, '5491100000003'], ['Costa', 600, 25, 0, ''], ['Andes', 450, 8, 2, '5491100000005'], ['Centro', 800, 18, 0, '5491100000006']];
+    var t = today(), seed = 3;
+    function r() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    S.clients = names.map(function (x, i) {
+      var series = []; for (var k = 29; k >= 0; k--) { var v = (i === 2 && k < 9) ? -(40000 + r() * 80000) : (250000 + r() * 500000) * (1 + (29 - k) / 60); series.push(k < x[3] ? null : Math.round(v)); }
+      return { id: 'd' + i, nombre: x[0], email: x[0].toLowerCase() + '@ejemplo.com', activo: i !== 4, rol: 'cliente', creado: addDays(t, -40 + i * 5),
+        _series: series, _neta: series.reduce(function (s, v) { return s + (v || 0); }, 0), _n7: series.slice(-7).reduce(function (s, v) { return s + (v || 0); }, 0), _last: addDays(t, -x[3]),
+        _cta: { abono: x[1], moneda: 'USD', proximo_cobro: addDays(t, x[2]), whatsapp: x[4], notas: i === 0 ? 'Quiere sumar campaña de remarketing en diciembre.' : '' } };
+    });
+    S.pagosMes = [{ user_id: 'd0', monto: 500, moneda: 'USD' }, { user_id: 'd3', monto: 600, moneda: 'USD' }, { user_id: 'd5', monto: 800, moneda: 'USD' }];
+  }
+
   async function renderAdmin() {
-    app.innerHTML = '<div class="wrap"><p class="muted">Cargando clientes…</p></div>';
-    var p = await sb.from('perfiles').select('*').order('creado', { ascending: false });
-    var since = addDays(today(), -29);
-    var r = await sb.from('registros').select('user_id,fecha,ingresos,premios,fichas,meta_ads,comisiones,otros_gastos').gte('fecha', since).limit(20000);
-    var last = await sb.from('registros').select('user_id,fecha').order('fecha', { ascending: false }).limit(5000);
-    if (p.error) { app.innerHTML = '<div class="wrap"><p class="err">No se pudieron cargar los clientes.</p></div>'; return; }
-    var agg = {}, lastBy = {};
-    (r.data || []).forEach(function (x) { agg[x.user_id] = (agg[x.user_id] || 0) + neta(x); });
-    (last.data || []).forEach(function (x) { if (!lastBy[x.user_id]) lastBy[x.user_id] = x.fecha; });
-    S.clients = p.data.filter(function (c) { return c.rol === 'cliente'; }).map(function (c) { c._neta = agg[c.id] || 0; c._last = lastBy[c.id] || null; return c; });
+    app.innerHTML = '<div class="wrap">' + shell('clientes') + '<p class="muted">Cargando clientes…</p></div>';
+    if (DEMO) { demoAdmin(); return drawAdmin(); }
+    var since = addDays(today(), -29), mStart = today().slice(0, 8) + '01';
+    var res = await Promise.all([
+      sb.from('perfiles').select('*').order('creado', { ascending: false }),
+      sb.from('registros').select('user_id,fecha,ingresos,premios,fichas,meta_ads,comisiones,otros_gastos').gte('fecha', since).limit(20000),
+      sb.from('registros').select('user_id,fecha').order('fecha', { ascending: false }).limit(5000),
+      sb.from('cuentas').select('*'),
+      sb.from('pagos').select('user_id,monto,moneda,fecha').gte('fecha', mStart),
+    ]);
+    if (res[0].error) { app.innerHTML = '<div class="wrap">' + shell('clientes') + '<p class="err">No se pudieron cargar los clientes.</p></div>'; return; }
+    var noBilling = !!res[3].error;
+    var days30 = days(since, today()), byUser = {}, lastBy = {}, ctas = {};
+    (res[1].data || []).forEach(function (x) { (byUser[x.user_id] = byUser[x.user_id] || {})[x.fecha] = neta(x); });
+    (res[2].data || []).forEach(function (x) { if (!lastBy[x.user_id]) lastBy[x.user_id] = x.fecha; });
+    (res[3].data || []).forEach(function (x) { ctas[x.user_id] = x; });
+    S.pagosMes = res[4].data || []; S.noBilling = noBilling;
+    S.clients = res[0].data.filter(function (c) { return c.rol === 'cliente'; }).map(function (c) {
+      var m = byUser[c.id] || {}; c._series = days30.map(function (d) { return m[d] == null ? null : m[d]; });
+      c._neta = c._series.reduce(function (s, v) { return s + (v || 0); }, 0); c._n7 = c._series.slice(-7).reduce(function (s, v) { return s + (v || 0); }, 0);
+      c._last = lastBy[c.id] || null; c._cta = ctas[c.id] || { abono: 0, moneda: 'USD', proximo_cobro: null, whatsapp: '', notas: '' };
+      return c;
+    });
     drawAdmin();
   }
+
+  function cobroState(c) {
+    var p = c._cta.proximo_cobro; if (!p || !n(c._cta.abono)) return { k: 'none', t: 'Sin abono cargado', d: null };
+    var d = daysBetween(today(), p);
+    if (d < 0) return { k: 'bad', t: 'Vencido hace ' + (-d) + (d === -1 ? ' día' : ' días'), d: d };
+    if (d === 0) return { k: 'warn', t: 'Vence hoy', d: d };
+    if (d <= 5) return { k: 'warn', t: 'Vence en ' + d + (d === 1 ? ' día' : ' días'), d: d };
+    return { k: 'ok', t: 'Al día · ' + short(p), d: d };
+  }
+  function actState(c) {
+    if (!c._last) return { k: 'none', t: 'Nunca cargó', d: 99 };
+    var d = daysBetween(c._last, today());
+    if (d <= 1) return { k: 'ok', t: d === 0 ? 'Cargó hoy' : 'Cargó ayer', d: d };
+    return { k: d <= 3 ? 'warn' : 'bad', t: 'Sin cargar hace ' + d + ' días', d: d };
+  }
+  function miniSpark(vals) {
+    var v = vals.map(function (x) { return x == null ? null : x; }), real = v.filter(function (x) { return x != null; });
+    if (real.length < 2) return '<svg class="mspark" aria-hidden="true"></svg>';
+    var max = Math.max.apply(null, real.concat([0])), min = Math.min.apply(null, real.concat([0])), sp = (max - min) || 1, W = 110, H = 32, d = '', on = false;
+    v.forEach(function (x, i) { if (x == null) { on = false; return; } d += (on ? 'L' : 'M') + (i / (v.length - 1) * W).toFixed(1) + ' ' + (H - 3 - (x - min) / sp * (H - 6)).toFixed(1); on = true; });
+    var z = (H - 3 - (0 - min) / sp * (H - 6)).toFixed(1), bad = real.slice(-7).reduce(function (s, x) { return s + x; }, 0) < 0;
+    return '<svg class="mspark" viewBox="0 0 110 32" aria-hidden="true"><line x1="0" x2="110" y1="' + z + '" y2="' + z + '" stroke="var(--line2)" stroke-dasharray="2 3"/><path d="' + d + '" fill="none" stroke="' + (bad ? '#ff6b6b' : '#2ee59d') + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+  function todos() {
+    var out = [];
+    S.clients.forEach(function (c) {
+      if (!c.activo) return;
+      var cs = cobroState(c), as = actState(c), wa = c._cta.whatsapp;
+      if (cs.k === 'bad') out.push({ p: 0, sev: 'crit', c: c, t: 'Cobro vencido', d: cur(c._cta.abono, c._cta.moneda) + ' · ' + cs.t.toLowerCase(), acts: [['paid', 'Marcar cobrado', 'ok'], wa ? ['wa', 'Recordar pago', '', 'Hola ' + c.nombre + '! Te recuerdo que venció el abono de ' + cur(c._cta.abono, c._cta.moneda) + '. ¿Me pasás el comprobante cuando lo tengas? Gracias!'] : null] });
+      else if (cs.k === 'warn') out.push({ p: 2, sev: 'warn', c: c, t: 'Cobro próximo', d: cur(c._cta.abono, c._cta.moneda) + ' · ' + cs.t.toLowerCase(), acts: [['paid', 'Marcar cobrado', ''], wa ? ['wa', 'Avisar', '', 'Hola ' + c.nombre + '! Te aviso que ' + (cs.d === 0 ? 'hoy' : 'en ' + cs.d + (cs.d === 1 ? ' día' : ' días')) + ' vence el abono de ' + cur(c._cta.abono, c._cta.moneda) + '. Gracias!'] : null] });
+      if (as.d >= 3) out.push({ p: 1, sev: as.d >= 5 ? 'crit' : 'warn', c: c, t: as.k === 'none' ? 'Nunca cargó datos' : 'Dejó de cargar datos', d: as.t + '. Un cliente que no mira sus números es un cliente que se puede ir.', acts: [wa ? ['wa', 'Recordarle', '', 'Hola ' + c.nombre + '! ¿Cómo venís? Acordate de cargar los días en tu dashboard así vemos juntos cómo viene la caja 📊'] : null] });
+      if (c._n7 < 0) out.push({ p: 1, sev: 'crit', c: c, t: 'Viene perdiendo plata', d: 'Ganancia neta de los últimos 7 días: ' + full(c._n7) + '. Revisá su pauta y llamalo antes de que lo note él.', acts: [['view', 'Ver dashboard', '']] });
+    });
+    return out.sort(function (a, b) { return a.p - b.p; });
+  }
+
   function drawAdmin() {
-    var q = S.q.toLowerCase(), list = S.clients.filter(function (c) { return !q || (c.nombre + ' ' + c.email).toLowerCase().indexOf(q) >= 0; });
-    var act = S.clients.filter(function (c) { return c.activo; }).length;
-    var h = '<div class="wrap"><div class="top"><div class="brand">' + MARK + esc(CFG.marca || 'PanelPro') + '</div><div class="who"><span class="chip admin">Admin</span><span>' + esc(S.me.email) + '</span><button class="btn sm" id="out">Salir</button></div></div>' +
-      '<div class="head"><div><span class="lbl">Administración</span><h1>Clientes</h1><p class="range">' + act + ' activos de ' + S.clients.length + '</p></div>' +
-      '<div class="actions"><a class="btn" href="creativos.html">Banco creativo</a><input id="q" class="btn" style="min-width:220px;cursor:text" placeholder="Buscar por nombre o email" value="' + esc(S.q) + '"></div></div>' +
-      '<article class="card" style="--c:var(--blue)"><div class="tbl-wrap"><table class="table"><thead><tr><th>Cliente</th><th>Estado</th><th>Último día cargado</th><th>Ganancia 30 días</th><th></th></tr></thead><tbody>' +
+    var q = S.q.toLowerCase(), act = S.clients.filter(function (c) { return c.activo; });
+    var mrr = { USD: 0, ARS: 0 }, cob = { USD: 0, ARS: 0 };
+    act.forEach(function (c) { mrr[c._cta.moneda || 'USD'] += n(c._cta.abono); });
+    (S.pagosMes || []).forEach(function (p) { cob[p.moneda || 'USD'] += n(p.monto); });
+    function both(o) { var s = []; if (o.USD || !o.ARS) s.push(cur(o.USD, 'USD')); if (o.ARS) s.push(cur(o.ARS, 'ARS')); return s.join(' + '); }
+    var pend = { USD: Math.max(0, mrr.USD - cob.USD), ARS: Math.max(0, mrr.ARS - cob.ARS) };
+    var TD = todos(), nuevos = S.clients.filter(function (c) { return c.creado && c.creado.slice(0, 7) === today().slice(0, 7); }).length;
+    var list = S.clients.filter(function (c) { return !q || (c.nombre + ' ' + c.email).toLowerCase().indexOf(q) >= 0; })
+      .sort(function (a, b) { if (a.activo !== b.activo) return a.activo ? -1 : 1; var sa = (cobroState(a).k === 'bad') * 2 + (actState(a).k === 'bad'), sb2 = (cobroState(b).k === 'bad') * 2 + (actState(b).k === 'bad'); return sb2 - sa || b._neta - a._neta; });
+    var h = '<div class="wrap">' + shell('clientes', '<span class="hide-sm">' + esc(S.me.email) + '</span>' + (DEMO ? '' : '<button class="btn sm" id="out">Salir</button>')) +
+      '<div class="head"><div><span class="lbl">Tu negocio · ' + MESL[parse(today()).getMonth()] + '</span><h1>Clientes</h1><p class="range">' + act.length + ' activos de ' + S.clients.length + (nuevos ? ' · ' + nuevos + (nuevos === 1 ? ' nuevo' : ' nuevos') + ' este mes' : '') + '</p></div></div>';
+    if (S.noBilling) h += '<p class="note-warn">Para ver abonos y cobros, corré en Supabase el archivo <b>supabase-actualizacion-1.sql</b> (SQL Editor → Run).</p>';
+    h += '<section class="kpis">' +
+      '<article class="card kpi" style="--c:var(--green)"><div class="ch"><span class="ico">' + I.wallet + '</span><span class="lbl">Ingreso mensual</span></div><div class="val">' + both(mrr) + '</div><div class="vs" style="margin-top:10px">abonos de los ' + act.length + ' clientes activos</div></article>' +
+      '<article class="card kpi" style="--c:var(--blue)"><div class="ch"><span class="ico">' + I.receipt + '</span><span class="lbl">Cobrado este mes</span></div><div class="val">' + both(cob) + '</div><div class="vs" style="margin-top:10px">' + (pend.USD || pend.ARS ? 'falta cobrar ' + both(pend) : 'todo cobrado') + '</div></article>' +
+      '<article class="card kpi" style="--c:var(--violet)"><div class="ch"><span class="ico">' + I.users + '</span><span class="lbl">Clientes activos</span></div><div class="val">' + act.length + '</div><div class="vs" style="margin-top:10px">' + (S.clients.length - act.length) + (S.clients.length - act.length === 1 ? ' suspendido' : ' suspendidos') + '</div></article>' +
+      '<article class="card kpi" style="--c:' + (TD.length ? 'var(--red)' : 'var(--green)') + '"><div class="ch"><span class="ico">' + I.target + '</span><span class="lbl">Para hacer hoy</span></div><div class="val">' + TD.length + '</div><div class="vs" style="margin-top:10px">' + (TD.length ? 'cobros, clientes inactivos o en pérdida' : 'nada pendiente') + '</div></article></section>';
+    h += '<section class="grid2"><article class="card wide" style="--c:var(--red)"><div class="ch"><span class="ico">' + I.list + '</span><div><h2>Para hacer hoy</h2><p class="sub">Lo que te puede costar plata o un cliente si lo dejás pasar</p></div></div>' +
+      (TD.length ? '<div class="todo">' + TD.map(function (t, i) {
+        return '<div class="td ' + t.sev + '"><div><h3><b>' + esc(t.c.nombre) + '</b> · ' + t.t + '</h3><p>' + esc(t.d) + '</p></div><div class="acts">' + t.acts.filter(Boolean).map(function (a) {
+          if (a[0] === 'wa') { var u = waTo(t.c._cta.whatsapp, a[3]); return u ? '<a class="btn sm" href="' + u + '" target="_blank" rel="noopener">' + I.wa + ' ' + a[1] + '</a>' : ''; }
+          return '<button class="btn sm ' + a[2] + '" data-' + a[0] + '="' + t.c.id + '">' + a[1] + '</button>';
+        }).join('') + '</div></div>';
+      }).join('') + '</div>' : '<p class="muted" style="margin-top:14px">Todo en orden: nadie debe, todos cargan y nadie viene en pérdida.</p>') + '</article></section>';
+    h += '<section class="grid2"><article class="card wide" style="--c:var(--blue)"><div class="ch"><span class="ico">' + I.users + '</span><div><h2>Todos los clientes</h2><p class="sub">Los que necesitan atención aparecen primero</p></div><input id="q" class="search" type="search" placeholder="Buscar cliente" aria-label="Buscar cliente" value="' + esc(S.q) + '"></div>' +
+      '<div class="tbl-wrap"><table class="table adm"><thead><tr><th>Cliente</th><th>Abono</th><th>Actividad</th><th>Ganancia 30 días</th><th></th></tr></thead><tbody>' +
       (list.map(function (c) {
-        return '<tr><td><b>' + esc(c.nombre || '—') + '</b><br><span class="muted">' + esc(c.email) + '</span></td><td><span class="st ' + (c.activo ? 'on' : 'off') + '">' + (c.activo ? 'Activo' : 'Suspendido') + '</span></td>' +
-          '<td>' + (c._last ? short(c._last) : '<span class="muted">Sin datos</span>') + '</td><td class="num" style="color:' + (c._neta < 0 ? 'var(--red)' : 'var(--text)') + '">' + full(c._neta) + '</td>' +
-          '<td><div class="actions"><button class="btn sm" data-view="' + c.id + '">Ver dashboard</button><button class="btn sm ' + (c.activo ? 'danger' : 'ok') + '" data-tog="' + c.id + '">' + (c.activo ? 'Suspender' : 'Reactivar') + '</button></div></td></tr>';
-      }).join('') || '<tr><td colspan="5" class="muted">Todavía no hay clientes. Invitalos desde Supabase → Authentication → Users.</td></tr>') +
-      '</tbody></table></div></article>' +
-      '<p class="muted" style="margin-top:16px;font-size:13.5px">Para dar acceso a un cliente nuevo: Supabase → Authentication → Users → Add user. Aparece acá automáticamente.</p></div>';
+        var cs = cobroState(c), as = actState(c);
+        return '<tr' + (c.activo ? '' : ' class="off-row"') + '><td><b>' + esc(c.nombre || '—') + '</b> ' + (c.activo ? '' : '<span class="st off">Suspendido</span>') + '<br><span class="muted">' + esc(c.email) + '</span>' + (c._cta.notas ? '<br><span class="note">' + esc(c._cta.notas) + '</span>' : '') + '</td>' +
+          '<td>' + (n(c._cta.abono) ? '<b class="num">' + cur(c._cta.abono, c._cta.moneda) + '</b><br>' : '') + '<span class="pill ' + cs.k + '">' + cs.t + '</span></td>' +
+          '<td><span class="pill ' + as.k + '">' + as.t + '</span></td>' +
+          '<td><div class="g30"><b class="num" style="color:' + (c._neta < 0 ? 'var(--red)' : 'var(--text)') + '">' + money(c._neta) + '</b>' + miniSpark(c._series) + '</div></td>' +
+          '<td><div class="actions"><button class="btn sm" data-view="' + c.id + '">Ver dashboard</button><button class="btn sm" data-edit-c="' + c.id + '">Editar</button><button class="btn sm ' + (c.activo ? 'danger' : 'ok') + '" data-tog="' + c.id + '">' + (c.activo ? 'Suspender' : 'Reactivar') + '</button></div></td></tr>';
+      }).join('') || '<tr><td colspan="5" class="muted">' + (S.clients.length ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes. Crealos en Supabase → Authentication → Users → Add user.') + '</td></tr>') +
+      '</tbody></table></div></article></section>' +
+      '<p class="muted" style="font-size:13px">Cliente nuevo: Supabase → Authentication → Users → Add user. Aparece acá solo; después tocá <b>Editar</b> para cargarle el abono y su WhatsApp.</p></div>';
     app.innerHTML = h;
-    $('#out').onclick = logout;
+    if ($('#out')) $('#out').onclick = logout;
     $('#q').oninput = function () { S.q = this.value; var pos = this.selectionStart; drawAdmin(); var i = $('#q'); i.focus(); i.setSelectionRange(pos, pos); };
-    $$('[data-view]').forEach(function (b) { b.onclick = async function () { S.viewing = S.clients.find(function (c) { return c.id === b.dataset.view; }); await loadRegs(); S.period = '30'; renderDash(); }; });
+    function byId(id) { return S.clients.find(function (c) { return c.id === id; }); }
+    $$('[data-view]').forEach(function (b) { b.onclick = async function () { S.viewing = byId(b.dataset.view); if (DEMO) S.regs = demoRegs(); else await loadRegs(); S.period = '30'; renderDash(); }; });
+    $$('[data-edit-c]').forEach(function (b) { b.onclick = function () { editClient(byId(b.dataset.editC)); }; });
+    $$('[data-paid]').forEach(function (b) { b.onclick = function () { markPaid(byId(b.dataset.paid)); }; });
     $$('[data-tog]').forEach(function (b) {
       b.onclick = async function () {
-        var c = S.clients.find(function (x) { return x.id === b.dataset.tog; });
+        var c = byId(b.dataset.tog);
         if (c.activo && b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '¿Seguro?'; return; }
-        var r = await sb.from('perfiles').update({ activo: !c.activo }).eq('id', c.id);
-        if (r.error) { toast('No se pudo cambiar el estado'); return; }
+        if (!DEMO) { var r = await sb.from('perfiles').update({ activo: !c.activo }).eq('id', c.id); if (r.error) { toast('No se pudo cambiar el estado'); return; } }
         c.activo = !c.activo; toast(c.activo ? 'Acceso reactivado' : 'Acceso suspendido'); drawAdmin();
       };
     });
+  }
+
+  async function markPaid(c) {
+    var monto = n(c._cta.abono), next = addMonth(c._cta.proximo_cobro || today());
+    if (!DEMO) {
+      var r1 = await sb.from('pagos').insert({ user_id: c.id, monto: monto, moneda: c._cta.moneda || 'USD', fecha: today() });
+      if (r1.error) { toast('No se pudo registrar el pago'); return; }
+      var r2 = await sb.from('cuentas').upsert({ user_id: c.id, abono: monto, moneda: c._cta.moneda || 'USD', proximo_cobro: next, whatsapp: c._cta.whatsapp || '', notas: c._cta.notas || '', actualizado: new Date().toISOString() });
+      if (r2.error) { toast('Pago registrado, pero no se pudo mover la fecha del próximo cobro'); }
+    }
+    (S.pagosMes = S.pagosMes || []).push({ user_id: c.id, monto: monto, moneda: c._cta.moneda || 'USD' });
+    c._cta.proximo_cobro = next; toast('Cobro registrado · próximo: ' + short(next)); drawAdmin();
+  }
+
+  function editClient(c) {
+    var k = c._cta, dlg = document.createElement('dialog');
+    dlg.innerHTML = '<form class="modal" method="dialog" id="ef"><h2>' + esc(c.nombre) + '</h2><p class="muted" style="font-size:13px;margin-top:-8px">' + esc(c.email) + ' · solo vos ves estos datos</p><div class="fgrid">' +
+      '<label class="field full">Nombre que ve en su dashboard<input id="e_n" value="' + esc(c.nombre) + '" maxlength="60"></label>' +
+      '<label class="field">Abono mensual<input id="e_a" type="number" min="0" step="1" inputmode="numeric" value="' + (n(k.abono) || '') + '"></label>' +
+      '<label class="field">Moneda<select id="e_m"><option value="USD"' + (k.moneda !== 'ARS' ? ' selected' : '') + '>Dólares (US$)</option><option value="ARS"' + (k.moneda === 'ARS' ? ' selected' : '') + '>Pesos ($)</option></select></label>' +
+      '<label class="field">Próximo cobro<input id="e_p" type="date" value="' + (k.proximo_cobro || '') + '"></label>' +
+      '<label class="field">WhatsApp (con 549…)<input id="e_w" inputmode="tel" placeholder="5491155555555" value="' + esc(k.whatsapp) + '"></label>' +
+      '<label class="field full">Objetivo de ganancia diaria ($)<input id="e_g" type="number" min="0" step="1000" inputmode="numeric" value="' + (n(c.objetivo_diario) || '') + '"></label>' +
+      '<label class="field full">Notas<textarea id="e_t" rows="3" maxlength="500" placeholder="Ej: quiere escalar en diciembre, prefiere que le hablen a la tarde">' + esc(k.notas) + '</textarea></label>' +
+      '</div><p class="err" id="eerr"></p><div class="mrow"><button class="btn" type="button" id="ecancel">Cancelar</button><button class="btn pri" type="submit">Guardar</button></div></form>';
+    document.body.appendChild(dlg); dlg.showModal();
+    dlg.addEventListener('close', function () { dlg.remove(); });
+    $('#ecancel', dlg).onclick = function () { dlg.close(); };
+    $('#ef', dlg).onsubmit = async function (e) {
+      e.preventDefault();
+      var cta = { user_id: c.id, abono: Math.max(0, n($('#e_a', dlg).value)), moneda: $('#e_m', dlg).value, proximo_cobro: $('#e_p', dlg).value || null, whatsapp: $('#e_w', dlg).value.replace(/\D/g, ''), notas: $('#e_t', dlg).value.trim(), actualizado: new Date().toISOString() };
+      var perf = { nombre: $('#e_n', dlg).value.trim() || c.nombre, objetivo_diario: Math.max(0, n($('#e_g', dlg).value)) };
+      if (!DEMO) {
+        var r1 = await sb.from('perfiles').update(perf).eq('id', c.id), r2 = await sb.from('cuentas').upsert(cta);
+        if (r1.error || r2.error) { $('#eerr', dlg).textContent = r2.error ? 'No se pudo guardar el abono. ¿Corriste supabase-actualizacion-1.sql en Supabase?' : 'No se pudo guardar.'; return; }
+      }
+      Object.assign(c, perf); c._cta = cta; dlg.close(); toast('Cliente actualizado'); drawAdmin();
+    };
   }
 
   start().catch(function (e) { console.error(e); app.innerHTML = '<div class="auth"><div class="auth-card"><h1>No se pudo cargar</h1><p class="muted">Revisá tu conexión y recargá la página.</p></div></div>'; });
