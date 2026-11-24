@@ -175,7 +175,7 @@
   }
   function render() {
     var b = C();
-    var h = '<div class="wrap"><div class="top"><div class="brand">' + MARK + 'PanelPro</div><nav class="nav" aria-label="Secciones"><a href="index.html#admin">Clientes</a><a href="index.html#agencia">Agencia</a><span aria-current="page">Banco creativo</span></nav><div class="who"><span class="chip demo">Vista previa</span><span class="chip admin">Admin</span></div></div>';
+    var h = '<div class="wrap"><div class="top"><div class="brand">' + MARK + 'PanelPro</div><nav class="nav" aria-label="Secciones"><a href="index.html">Clientes</a><span aria-current="page">Banco creativo</span></nav><div class="who"><span class="chip demo">Vista previa</span><span class="chip admin">Admin</span></div></div>';
     h += '<div class="head"><div><span class="lbl">Anuncios de todos tus clientes</span><h1>Banco creativo</h1><p class="range">Generá piezas con la marca de cada cliente y seguí cuáles rinden</p></div></div>';
     h += '<div class="tabs" role="group" aria-label="Cliente">' + Object.keys(DB.clients).map(function (k) { var c = DB.clients[k], nd = needs(c); return '<button data-c="' + k + '" aria-pressed="' + (DB.sel === k) + '" style="--dot:' + c.c1 + '"><i></i>' + esc(c.nombre) + (nd.alert ? '<span class="n">renovar</span>' : '') + '</button>'; }).join('') + '<button id="addc">+ Cliente</button></div>';
     h += '<div class="steps"><button data-s="marca" aria-pressed="' + (UI.step === 'marca') + '">1 · Marca<small>Logo, colores y textos</small></button><button data-s="gen" aria-pressed="' + (UI.step === 'gen') + '">2 · Generar<small>Piezas y textos en serie</small></button><button data-s="lib" aria-pressed="' + (UI.step === 'lib') + '">3 · Biblioteca<small>Qué rinde y qué renovar</small></button></div>';

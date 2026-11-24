@@ -1,0 +1,7 @@
+PANEL DE LA AGENCIA · PanelPro
+Panel exclusivo del administrador: clientes de la agencia, pagos, pagos parciales y deuda.
+Usa el mismo Supabase que el dashboard de caja, pero es un sitio aparte con su propio link.
+Solo entra un usuario con rol admin; cualquier otro usuario es rechazado.
+
+Archivos: index.html, estilos.css, agencia.js, config.js (URL y clave pública de Supabase).
+Las tablas se crean con supabase-actualizacion-2.sql (carpeta caja/), una sola vez.
