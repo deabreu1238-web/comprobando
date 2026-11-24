@@ -96,6 +96,27 @@ h1 { font: 800 clamp(30px, 4.4vw, 42px)/1.05 var(--fd); letter-spacing: -.025em;
 .debt .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end }
 .empty { padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line2); border-radius: 14px; margin-top: 16px; font-size: 14px }
 
+/* pagos parciales */
+.parc { margin-bottom: 12px }
+.psum { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--text2) }
+.psum b { color: var(--text) }
+.prows { display: grid; gap: 10px; margin-top: 16px }
+.prow { display: grid; grid-template-columns: minmax(140px, 1.1fr) minmax(160px, 1.4fr) minmax(90px, .7fr) minmax(130px, .9fr) auto; gap: 16px; align-items: center; padding: 13px 15px; border: 1px solid var(--line2); border-left: 4px solid var(--line2); border-radius: 14px; background: var(--card2) }
+.prow.warn { border-left-color: var(--amber) } .prow.bad { border-left-color: var(--red) }
+.prow .m { color: var(--muted); font-size: 12.5px; margin-top: 2px }
+.pline { display: flex; justify-content: space-between; gap: 8px; font-size: 13.5px; color: var(--text2) }
+.pline b { color: var(--text) }
+.prow .bar { margin-top: 8px }
+.prow .bar i { background: var(--amber) }
+.pfalta small { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600 }
+.pfalta b { font: 800 18px var(--fd); color: var(--text) }
+.prow .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end }
+.resto { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; margin-top: 12px; padding: 12px; border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent); border-radius: 12px }
+.quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px }
+.resto .quick { margin-top: 0 }
+@media (max-width: 980px) { .prow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) } .prow .pprog { grid-column: 1 / -1; order: 3 } .prow .acts { grid-column: 1 / -1; order: 4; justify-content: flex-start } }
+@media (max-width: 560px) { .resto { grid-template-columns: 1fr } }
+
 /* gráfico */
 .chart { width: 100%; height: auto; display: block; margin-top: 10px }
 .chart .gl { stroke: var(--line); stroke-dasharray: 3 5 }
@@ -213,6 +234,26 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
   function fecha(s) { var d = parse(s); return d.getDate() + ' ' + MES[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); }
   function antig(s) { var a = parse(s), b = new Date(), m = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth(); return m < 1 ? 'este mes' : m === 1 ? 'hace 1 mes' : m < 12 ? 'hace ' + m + ' meses' : 'hace ' + Math.floor(m / 12) + (m >= 24 ? ' años' : ' año') + (m % 12 ? ' y ' + (m % 12) + ' m' : ''); }
   function toast(m) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('on'); }, 2800); }
+  function addDias(d, k) { var x = parse(d); x.setDate(x.getDate() + k); return iso(x); }
+  function diasHasta(d) { return Math.round((parse(d) - parse(today())) / 864e5); }
+  function venceTxt(dias) { return dias < 0 ? 'Vencido hace ' + (-dias) + (dias === -1 ? ' día' : ' días') : dias === 0 ? 'Vence hoy' : dias === 1 ? 'Vence mañana' : 'Vence en ' + dias + ' días'; }
+  function venceKind(dias) { return dias < 0 ? 'bad' : dias <= 2 ? 'warn' : 'none'; }
+  // Saldos de pagos parciales: cada mes (o pago único) que tiene algo pagado pero no completo,
+  // con la fecha en que el cliente quedó en pagar el resto (por defecto, 7 días después del último pago).
+  function saldos() {
+    var out = [];
+    C().forEach(function (c) {
+      var cu = c._c || cuenta(c);
+      cu.meses.forEach(function (m) {
+        if (m.estado !== 'parcial') return;
+        var ps = P().filter(function (x) { return x.cliente_id === c.id && (c.frecuencia === 'unico' || x.periodo === m.periodo); }).sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : (a.creado || '') < (b.creado || '') ? 1 : -1; });
+        var last = ps[0]; if (!last) return;
+        var vence = last.resto_vence || addDias(last.fecha, 7);
+        out.push({ c: c, m: m, last: last, vence: vence, dias: diasHasta(vence), definida: !!last.resto_vence });
+      });
+    });
+    return out.sort(function (a, b) { return a.vence < b.vence ? -1 : a.vence > b.vence ? 1 : 0; });
+  }
   function wa(num, text) { var d = String(num || '').replace(/\D/g, ''); return d ? 'https://wa.me/' + d + '?text=' + encodeURIComponent(text) : null; }
   function sync(kind, text) { var s = $('#sync'); s.className = 'sync ' + kind; s.lastChild.textContent = text; }
   var IC = {
@@ -234,18 +275,23 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
   // ------------------------------------------------------------ cálculos de cuenta
   function pagado(c, periodo) { return P().filter(function (p) { return p.cliente_id === c.id && (!periodo || p.periodo === periodo); }).reduce(function (s, p) { return s + n(p.monto); }, 0); }
   // Mes por mes, desde "cobrar_desde" hasta hoy: cuánto se esperaba, cuánto pagó, cuánto falta.
+  // Fecha en que vence el resto de un mes pagado en parte (la última fecha pactada, o 7 días después del último pago).
+  function venceDe(c, periodo) {
+    var ps = P().filter(function (x) { return x.cliente_id === c.id && (c.frecuencia === 'unico' || x.periodo === periodo); }).sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : (a.creado || '') < (b.creado || '') ? 1 : -1; });
+    return ps[0] ? (ps[0].resto_vence || addDias(ps[0].fecha, 7)) : null;
+  }
   function cuenta(c) {
     var hoy = mes(), desde = mes(c.cobrar_desde || c.fecha_ingreso), monto = n(c.monto), r = { meses: [], deuda: 0, atrasada: 0 };
     if (c.frecuencia === 'unico') {
       var pg = pagado(c), f = Math.max(0, monto - pg);
       r.actual = { periodo: desde, esperado: monto, pagado: pg, falta: f, estado: !monto ? 'sin' : f <= 0 ? 'pagado' : pg > 0 ? 'parcial' : 'pendiente' };
-      r.meses.push(r.actual); r.deuda = f; if (desde < hoy) r.atrasada = f; return r;
+      r.meses.push(r.actual); r.deuda = f; if (r.actual.estado === 'parcial' ? venceDe(c, desde) < today() : desde < hoy) r.atrasada = f; return r;
     }
     mesesEntre(desde, hoy).forEach(function (p) {
       var cobra = c.estado === 'activo' || P().some(function (x) { return x.cliente_id === c.id && x.periodo === p; });
       var esp = cobra ? monto : 0, pg = pagado(c, p), f = Math.max(0, esp - pg);
       var m = { periodo: p, esperado: esp, pagado: pg, falta: f, estado: !esp ? (pg ? 'pagado' : 'sin') : f <= 0 ? 'pagado' : pg > 0 ? 'parcial' : 'pendiente' };
-      r.meses.push(m); r.deuda += f; if (p < hoy) r.atrasada += f;
+      r.meses.push(m); r.deuda += f; if (m.estado === 'parcial' ? venceDe(c, p) < today() : p < hoy) r.atrasada += f;
     });
     r.actual = r.meses[r.meses.length - 1] || { periodo: hoy, esperado: 0, pagado: 0, falta: 0, estado: 'sin' };
     return r;
@@ -286,6 +332,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       kpi(porCobrar.USD || porCobrar.ARS ? 'var(--red)' : 'var(--green)', IC.clock, 'Por cobrar', dual(porCobrar), deben.length ? deben.length + (deben.length === 1 ? ' cliente debe' : ' clientes deben') : 'Todos al día') +
       kpi('var(--blue)', IC.up, 'Ingreso mensual fijo', dual(fijo), 'abonos mensuales activos') +
       kpi('var(--violet)', IC.grid, 'Cuentas gestionadas', String(cuentasAds), 'en ' + act.length + (act.length === 1 ? ' cliente' : ' clientes')) + '</section>';
+    h += parcialesCard();
     h += '<section class="grid2"><article class="card"><div class="ch"><div class="grow"><h2>Quién debe</h2><p>Primero los atrasados, después los del mes en curso</p></div></div>' +
       (deben.length ? '<div class="debts">' + deben.map(debtRow).join('') + '</div>' : '<div class="empty">Nadie debe nada. Todos los clientes están al día.</div>') + '</article>' +
       '<article class="card"><div class="ch"><div class="grow"><h2>Cobrado por mes</h2><p>Últimos 6 meses, en ' + (main === 'ARS' ? 'pesos' : 'dólares') + '</p></div></div>' + chart(main) +
@@ -297,9 +344,28 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
     app.innerHTML = h;
     bind();
   }
+  function parcialesCard() {
+    var L = saldos(), venc = L.filter(function (x) { return x.dias < 0; }), semana = L.filter(function (x) { return x.dias >= 0 && x.dias <= 7; });
+    var tot = por(L.map(function (x) { return { moneda: x.c.moneda, v: x.m.falta }; }), function (x) { return x.v; });
+    var h = '<article class="card parc" id="parciales"><div class="ch"><div class="grow"><h2>Pagos parciales</h2><p>Clientes que pagaron una parte y quedaron en pagar el resto</p></div>' +
+      (L.length ? '<div class="psum"><span><b class="num">' + dual(tot).replace('<small>', ' ').replace('</small>', '') + '</b> por cobrar</span>' + (venc.length ? '<span class="pill bad">' + venc.length + (venc.length === 1 ? ' vencido' : ' vencidos') + '</span>' : '') + (semana.length ? '<span class="pill warn">' + semana.length + ' esta semana</span>' : '') + '</div>' : '') + '</div>';
+    if (!L.length) return h + '<div class="empty">No hay pagos parciales abiertos. Cuando alguien pague una parte, va a aparecer acá con la fecha del resto.</div></article>';
+    h += '<div class="prows">' + L.map(function (x, i) {
+      var c = x.c, m = x.m, pct = m.esperado ? Math.min(100, m.pagado / m.esperado * 100) : 0;
+      var link = wa(c.contacto, 'Hola ' + c.nombre + '! Te recuerdo que ' + (x.dias < 0 ? 'el ' + fecha(x.vence) + ' venció' : x.dias === 0 ? 'hoy vence' : 'el ' + fecha(x.vence) + ' vence') + ' el resto del pago: ' + cur(m.falta, c.moneda) + '. ¿Me pasás el comprobante cuando lo tengas? Gracias!');
+      return '<div class="prow ' + venceKind(x.dias) + '"><div class="pwho"><button class="row-btn" data-open="' + esc(c.id) + '">' + esc(c.nombre) + '</button><div class="m">' + esc(c.frecuencia === 'unico' ? 'Pago único' : 'Mes de ' + mesLargo(m.periodo)) + '</div></div>' +
+        '<div class="pprog"><div class="pline"><span>Pagó <b class="num">' + esc(cur(m.pagado, c.moneda)) + '</b> de ' + esc(cur(m.esperado, c.moneda)) + '</span><span class="m">' + Math.round(pct) + '%</span></div><div class="bar"><i style="width:' + pct.toFixed(0) + '%"></i></div></div>' +
+        '<div class="pfalta"><small>Falta</small><b class="num">' + esc(cur(m.falta, c.moneda)) + '</b></div>' +
+        '<div class="pvence"><span class="pill ' + venceKind(x.dias) + '">' + venceTxt(x.dias) + '</span><div class="m">' + esc(fecha(x.vence)) + (x.definida ? '' : ' · 7 días por defecto') + '</div></div>' +
+        '<div class="acts"><button class="btn sm ok" data-resto="' + i + '">Cobrar resto</button>' + (link ? '<a class="btn sm" href="' + link + '" target="_blank" rel="noopener" aria-label="Recordar por WhatsApp a ' + esc(c.nombre) + '">' + IC.wa + '</a>' : '') + '<button class="btn sm" data-fecha="' + i + '">Cambiar fecha</button></div></div>';
+    }).join('') + '</div></article>';
+    S._saldos = L;
+    return h;
+  }
   function kpi(c, ic, lbl, val, note, pct) { return '<article class="card kpi" style="--c:' + c + '"><div class="lbl"><span>' + ic + '</span>' + lbl + '</div><div class="val num">' + val + '</div>' + (pct != null ? '<div class="bar" aria-hidden="true"><i style="width:' + pct.toFixed(0) + '%"></i></div>' : '') + '<div class="note">' + esc(note) + '</div></article>'; }
   function debtRow(c) {
-    var det = c._c.meses.filter(function (m) { return m.falta > 0; }).map(function (m) { return mesCorto(m.periodo) + ': ' + (m.estado === 'parcial' ? 'pagó ' + cur(m.pagado, c.moneda) + ' de ' + cur(m.esperado, c.moneda) : 'no pagó ' + cur(m.esperado, c.moneda)); }).join(' · ');
+    var sv = saldos().filter(function (x) { return x.c.id === c.id; });
+    var det = c._c.meses.filter(function (m) { return m.falta > 0; }).map(function (m) { var s0 = sv.find(function (x) { return x.m.periodo === m.periodo; }); return mesCorto(m.periodo) + ': ' + (m.estado === 'parcial' ? 'pagó ' + cur(m.pagado, c.moneda) + ' de ' + cur(m.esperado, c.moneda) + (s0 ? ', resto ' + (s0.dias < 0 ? 'vencido el ' : 'el ') + fecha(s0.vence) : '') : 'no pagó ' + cur(m.esperado, c.moneda)); }).join(' · ');
     var link = wa(c.contacto, 'Hola! Te escribo por el saldo pendiente de ' + cur(c._c.deuda, c.moneda) + '. ¿Me pasás el comprobante cuando lo tengas? Gracias!');
     return '<div class="debt' + (c._c.atrasada > 0 ? ' late' : '') + '"><div><h3><b>' + esc(c.nombre) + '</b> · debe <span class="num">' + esc(cur(c._c.deuda, c.moneda)) + '</span>' + (c._c.atrasada > 0 ? ' <span class="pill bad">Atrasado</span>' : '') + '</h3><p>' + esc(det) + '</p></div>' +
       '<div class="acts"><button class="btn sm ok" data-pay="' + esc(c.id) + '">Registrar pago</button>' + (link ? '<a class="btn sm" href="' + link + '" target="_blank" rel="noopener">' + IC.wa + ' Recordar</a>' : '') + '</div></div>';
@@ -361,6 +427,8 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
     $$('[data-pay]').forEach(function (b) { b.onclick = function () { payment(byId(b.dataset.pay)); }; });
     $$('[data-edit]').forEach(function (b) { b.onclick = function () { editClient(byId(b.dataset.edit)); }; });
     $$('[data-open]').forEach(function (b) { b.onclick = function () { detail(byId(b.dataset.open)); }; });
+    $$('[data-resto]').forEach(function (b) { b.onclick = function () { var x = S._saldos[+b.dataset.resto]; payment(x.c, x.m.periodo, x.m.falta); }; });
+    $$('[data-fecha]').forEach(function (b) { b.onclick = function () { cambiarFecha(S._saldos[+b.dataset.fecha]); }; });
   }
 
   // ------------------------------------------------------------ guardado
@@ -386,12 +454,17 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       '<label class="field">Moneda<select id="f_moneda"><option value="USD"' + (c.moneda !== 'ARS' ? ' selected' : '') + '>Dólares (US$)</option><option value="ARS"' + (c.moneda === 'ARS' ? ' selected' : '') + '>Pesos ($)</option></select></label>' +
       '<label class="field">Cómo paga<select id="f_frec"><option value="mensual"' + (c.frecuencia !== 'unico' ? ' selected' : '') + '>Todos los meses</option><option value="unico"' + (c.frecuencia === 'unico' ? ' selected' : '') + '>Pago único</option></select></label>' +
       '<label class="field">Controlar pagos desde<input id="f_desde" type="month" value="' + esc(mes(c.cobrar_desde)) + '"><small>Los meses anteriores no cuentan como deuda.</small></label>' +
+      (nuevo ? '<span class="fsec">Pago al ingresar (opcional)</span>' +
+        '<label class="field">Pagó al ingresar<input id="f_sena" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ej: la mitad"><small id="f_sena_tip">Dejalo vacío si todavía no pagó.</small></label>' +
+        '<label class="field">Paga el resto el<input id="f_resto" type="date" value="' + addDias(today(), 7) + '"><small>Por defecto, 7 días después.</small></label>' +
+        '<label class="field">Medio<select id="f_medio">' + MEDIOS.map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select></label><span></span>' : '') +
       '<span class="fsec">Contacto y notas</span>' +
       '<label class="field full">WhatsApp (con 549…)<input id="f_wa" inputmode="tel" autocomplete="off" placeholder="5491155555555" value="' + esc(c.contacto) + '"></label>' +
       '<label class="field full">Notas<textarea id="f_notas" maxlength="500" placeholder="Ej: paga en dos partes, factura a nombre de…">' + esc(c.notas) + '</textarea></label>' +
       '</div><datalist id="servicios"><option>Pauta Meta Ads</option><option>Pauta + Dashboard</option><option>Estructura WhatsApp</option><option>Mentoría 1 a 1</option></datalist>' +
       '<p class="err" id="cerr" role="alert"></p><div class="mrow">' + (nuevo ? '' : '<button class="btn danger left" type="button" id="cdel">Eliminar cliente</button>') + '<button class="btn" type="button" id="ccancel">Cancelar</button><button class="btn pri" type="submit">Guardar</button></div></form>');
     $('#f_nombre', d).focus();
+    if ($('#f_sena', d)) { var tip = function () { var m = n($('#f_monto', d).value), s0 = n($('#f_sena', d).value), t = $('#f_sena_tip', d); t.textContent = !s0 ? 'Dejalo vacío si todavía no pagó.' : m && s0 < m ? 'Queda debiendo ' + cur(m - s0, $('#f_moneda', d).value) + '.' : 'Pagó el total.'; }; $('#f_sena', d).oninput = tip; $('#f_monto', d).addEventListener('input', tip); }
     $('#ccancel', d).onclick = function () { d.close(); };
     if ($('#cdel', d)) $('#cdel', d).onclick = async function () {
       if (!confirmBtn(this, '¿Seguro? Se borra con todos sus pagos')) return;
@@ -409,31 +482,44 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       if (demoGuard()) return;
       var sb = $('button[type=submit]', d); sb.disabled = true;
       try {
-        if (nuevo) { row.creado = new Date().toISOString(); await retry(function () { return S.db.collection('clientes').add(row); }); }
+        if (nuevo) {
+          row.creado = new Date().toISOString();
+          var ref = await retry(function () { return S.db.collection('clientes').add(row); });
+          var sena = Math.round(n($('#f_sena', d).value) * 100) / 100;
+          if (sena > 0 && ref && ref.id) {
+            var fp = row.fecha_ingreso > today() ? today() : row.fecha_ingreso, pago = { cliente_id: ref.id, monto: sena, fecha: fp, periodo: row.frecuencia === 'unico' ? mes(row.cobrar_desde) : (mes(row.cobrar_desde) > mes(fp) ? mes(row.cobrar_desde) : mes(fp)), moneda: row.moneda, medio: $('#f_medio', d).value, nota: 'Pago al ingresar', creado: new Date().toISOString() };
+            if (sena < row.monto) pago.resto_vence = $('#f_resto', d).value || addDias(fp, 7);
+            await retry(function () { return S.db.collection('pagos').add(pago); });
+          }
+        }
         else { row.creado = c.creado || row.actualizado; await retry(function () { return S.db.doc('clientes/' + c.id).set(row); }); }
         d.close(); toast(nuevo ? 'Cliente agregado' : 'Cambios guardados');
       } catch (err) { sb.disabled = false; $('#cerr', d).textContent = failMsg(err); }
     };
   }
 
-  function payment(c, periodoPre) {
+  function payment(c, periodoPre, montoPre) {
     if (!c) return;
     var cu = cuenta(c), pend = cu.meses.filter(function (m) { return m.falta > 0; }), sug = periodoPre ? (cu.meses.find(function (m) { return m.periodo === periodoPre; }) || cu.actual) : (pend[0] || cu.actual);
     var opts = c.frecuencia === 'unico' ? [mes(c.cobrar_desde || c.fecha_ingreso)] : mesesEntre(addMes(mes(), -12) < mes(c.cobrar_desde || c.fecha_ingreso) ? mes(c.cobrar_desde || c.fecha_ingreso) : addMes(mes(), -12), addMes(mes(), 2)).reverse();
     var d = modal('<form id="pf" novalidate><h2>Registrar pago</h2><p class="lead">' + esc(c.nombre) + ' · ' + esc(cur(c.monto, c.moneda)) + (c.frecuencia === 'unico' ? ' (pago único)' : ' por mes') + (cu.deuda ? ' · debe ' + esc(cur(cu.deuda, c.moneda)) : '') + '</p><div class="fgrid">' +
-      '<label class="field">Monto que pagó (' + (c.moneda === 'ARS' ? '$' : 'US$') + ')<input id="p_monto" type="number" min="0" step="0.01" inputmode="decimal" required value="' + (sug.falta || n(c.monto) || '') + '"></label>' +
+      '<label class="field">Monto que pagó (' + (c.moneda === 'ARS' ? '$' : 'US$') + ')<input id="p_monto" type="number" min="0" step="0.01" inputmode="decimal" required value="' + (montoPre || sug.falta || n(c.monto) || '') + '"></label>' +
       '<label class="field">Fecha del pago<input id="p_fecha" type="date" required max="' + today() + '" value="' + today() + '"></label>' +
       (c.frecuencia === 'unico' ? '<input type="hidden" id="p_periodo" value="' + opts[0] + '">' : '<label class="field">Corresponde a<select id="p_periodo">' + opts.map(function (p) { var m = cu.meses.find(function (x) { return x.periodo === p; }); return '<option value="' + p + '"' + (p === sug.periodo ? ' selected' : '') + '>' + mesLargo(p) + (m && m.falta ? ' · falta ' + cur(m.falta, c.moneda) : m && m.estado === 'pagado' ? ' · pagado' : '') + '</option>'; }).join('') + '</select></label>') +
       '<label class="field' + (c.frecuencia === 'unico' ? '' : '') + '">Medio<select id="p_medio">' + MEDIOS.map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select></label>' +
       '<label class="field full">Nota (opcional)<input id="p_nota" maxlength="200" placeholder="Ej: primera mitad, comprobante por WhatsApp"></label>' +
-      '</div><div class="calc" id="p_calc"></div><p class="err" id="perr" role="alert"></p><div class="mrow"><button class="btn" type="button" id="pcancel">Cancelar</button><button class="btn ok" type="submit">Guardar pago</button></div></form>');
+      '</div><div class="calc" id="p_calc"></div><div class="resto" id="p_resto" hidden><label class="field">¿Cuándo paga el resto?<input id="p_vence" type="date"></label><div class="quick">' + [3, 7, 15].map(function (k) { return '<button type="button" class="chip" data-plus="' + k + '">+' + k + ' días</button>'; }).join('') + '</div></div><p class="err" id="perr" role="alert"></p><div class="mrow"><button class="btn" type="button" id="pcancel">Cancelar</button><button class="btn ok" type="submit">Guardar pago</button></div></form>');
     function calc() {
       var p = $('#p_periodo', d).value, m = cu.meses.find(function (x) { return x.periodo === p; }) || { esperado: c.estado === 'activo' || c.frecuencia === 'unico' ? n(c.monto) : 0, pagado: pagado(c, c.frecuencia === 'unico' ? null : p) };
       var nuevo = n($('#p_monto', d).value), falta = Math.max(0, m.esperado - m.pagado - nuevo), sobra = Math.max(0, m.pagado + nuevo - m.esperado);
       var label = c.frecuencia === 'unico' ? 'el pago único' : mesLargo(p);
+      var rb = $('#p_resto', d); rb.hidden = !(nuevo && falta > 0);
+      if (!rb.hidden && !$('#p_vence', d).value) $('#p_vence', d).value = addDias($('#p_fecha', d).value || today(), 7);
       $('#p_calc', d).innerHTML = !nuevo ? '<span>Escribí el monto que pagó.</span>' : falta > 0 ? '<span>Pago parcial: de ' + esc(label) + ' va a quedar debiendo</span><b style="color:var(--amber)">' + esc(cur(falta, c.moneda)) + '</b>' :
         '<span>Con este pago, ' + esc(label) + ' queda</span><b style="color:var(--green)">pagado' + (sobra > 0 && m.esperado ? ' (+' + esc(cur(sobra, c.moneda)) + ' de más)' : '') + '</b>';
     }
+    $('#p_fecha', d).onchange = function () { $('#p_vence', d).value = addDias(this.value || today(), 7); };
+    $$('[data-plus]', d).forEach(function (b) { b.onclick = function () { $('#p_vence', d).value = addDias($('#p_fecha', d).value || today(), +b.dataset.plus); }; });
     $('#p_monto', d).oninput = calc; if ($('#p_periodo', d).tagName === 'SELECT') $('#p_periodo', d).onchange = calc; calc();
     $('#p_monto', d).select();
     $('#pcancel', d).onclick = function () { d.close(); };
@@ -442,10 +528,33 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       var row = { cliente_id: c.id, monto: Math.round(n($('#p_monto', d).value) * 100) / 100, fecha: $('#p_fecha', d).value || today(), periodo: $('#p_periodo', d).value, moneda: c.moneda === 'ARS' ? 'ARS' : 'USD', medio: $('#p_medio', d).value, nota: $('#p_nota', d).value.trim(), creado: new Date().toISOString() };
       if (!(row.monto > 0)) { $('#perr', d).textContent = 'Poné un monto mayor a cero.'; $('#p_monto', d).focus(); return; }
       if (row.fecha > today()) { $('#perr', d).textContent = 'La fecha del pago no puede ser futura.'; return; }
+      if (!$('#p_resto', d).hidden) {
+        var v = $('#p_vence', d).value;
+        if (!v) { $('#perr', d).textContent = 'Elegí cuándo paga el resto.'; return; }
+        if (v < row.fecha) { $('#perr', d).textContent = 'La fecha del resto no puede ser anterior al pago.'; return; }
+        row.resto_vence = v;
+      }
       if (demoGuard()) return;
       var sb = $('button[type=submit]', d); sb.disabled = true;
-      try { await retry(function () { return S.db.collection('pagos').add(row); }); d.close(); toast('Pago de ' + cur(row.monto, row.moneda) + ' registrado'); }
+      try { await retry(function () { return S.db.collection('pagos').add(row); }); d.close(); toast('Pago de ' + cur(row.monto, row.moneda) + ' registrado' + (row.resto_vence ? ' · el resto vence el ' + fecha(row.resto_vence) : '')); }
       catch (err) { sb.disabled = false; $('#perr', d).textContent = failMsg(err); }
+    };
+  }
+
+  function cambiarFecha(x) {
+    if (!x) return;
+    var d = modal('<form id="vf" novalidate><h2>Fecha del resto</h2><p class="lead">' + esc(x.c.nombre) + ' · falta ' + esc(cur(x.m.falta, x.c.moneda)) + '</p>' +
+      '<label class="field">Paga el resto el<input id="v_fecha" type="date" required value="' + esc(x.vence) + '"></label>' +
+      '<div class="quick">' + [3, 7, 15].map(function (k) { return '<button type="button" class="chip" data-plus="' + k + '">Dentro de ' + k + ' días</button>'; }).join('') + '</div>' +
+      '<p class="err" id="verr" role="alert"></p><div class="mrow"><button class="btn" type="button" id="vx">Cancelar</button><button class="btn pri" type="submit">Guardar fecha</button></div></form>');
+    $$('[data-plus]', d).forEach(function (b) { b.onclick = function () { $('#v_fecha', d).value = addDias(today(), +b.dataset.plus); }; });
+    $('#vx', d).onclick = function () { d.close(); };
+    $('#vf', d).onsubmit = async function (e) {
+      e.preventDefault(); var v = $('#v_fecha', d).value;
+      if (!v) { $('#verr', d).textContent = 'Elegí una fecha.'; return; }
+      if (demoGuard()) return;
+      try { await retry(function () { return S.db.doc('pagos/' + x.last.id).update({ resto_vence: v }); }); d.close(); toast('Nueva fecha: ' + fecha(v)); }
+      catch (err) { $('#verr', d).textContent = failMsg(err); }
     };
   }
 
@@ -457,7 +566,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       '<div class="facts"><div class="fact"><small>Ingresó</small><b>' + esc(fecha(c.fecha_ingreso)) + '</b></div><div class="fact"><small>Cuentas</small><b>' + n(c.cuentas_publicitarias) + '</b></div><div class="fact"><small>Total cobrado</small><b class="num">' + esc(cur(pagado(c), c.moneda)) + '</b></div><div class="fact"><small>Debe</small><b class="num" style="color:' + (cu.deuda ? 'var(--red)' : 'var(--green)') + '">' + (cu.deuda ? esc(cur(cu.deuda, c.moneda)) : 'Nada') + '</b></div></div>' +
       (c.frecuencia !== 'unico' && cu.meses.length ? '<div class="months" aria-label="Estado por mes">' + cu.meses.slice(-12).map(function (m) { return '<span class="mo ' + m.estado + '" title="' + esc(mesLargo(m.periodo) + ': ' + (m.estado === 'parcial' ? 'pagó ' + cur(m.pagado, c.moneda) + ' de ' + cur(m.esperado, c.moneda) : m.estado === 'sin' ? 'sin cobro' : m.estado)) + '">' + mesCorto(m.periodo) + '</span>'; }).join('') + '</div>' : '') +
       (c.notas ? '<p class="note-tag" style="max-width:none;margin:0 0 12px">' + esc(c.notas) + '</p>' : '') +
-      '<div class="plist">' + (ps.length ? ps.map(function (p) { return '<div class="pi"><div><b class="num">' + esc(cur(p.monto, p.moneda)) + '</b> <span class="m">· ' + esc(fecha(p.fecha)) + ' · ' + esc(p.medio || '—') + '</span><div class="m">Corresponde a ' + esc(c.frecuencia === 'unico' ? 'pago único' : mesLargo(p.periodo)) + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div><button class="btn sm danger" data-del="' + esc(p.id) + '">Borrar</button></div>'; }).join('') : '<div class="empty" style="margin:0">Todavía no hay pagos registrados.</div>') + '</div>' +
+      '<div class="plist">' + (ps.length ? ps.map(function (p) { return '<div class="pi"><div><b class="num">' + esc(cur(p.monto, p.moneda)) + '</b> <span class="m">· ' + esc(fecha(p.fecha)) + ' · ' + esc(p.medio || '—') + '</span><div class="m">Corresponde a ' + esc(c.frecuencia === 'unico' ? 'pago único' : mesLargo(p.periodo)) + (p.nota ? ' · ' + esc(p.nota) : '') + (p.resto_vence ? ' · resto para el ' + esc(fecha(p.resto_vence)) : '') + '</div></div><button class="btn sm danger" data-del="' + esc(p.id) + '">Borrar</button></div>'; }).join('') : '<div class="empty" style="margin:0">Todavía no hay pagos registrados.</div>') + '</div>' +
       '<p class="err" id="derr" role="alert"></p><div class="mrow">' + (link ? '<a class="btn left" href="' + link + '" target="_blank" rel="noopener">' + IC.wa + ' WhatsApp</a>' : '') + '<button class="btn" id="dedit">Editar</button><button class="btn" id="dclose">Cerrar</button><button class="btn ok" id="dpay">Registrar pago</button></div>');
     $('#dclose', d).onclick = function () { d.close(); };
     $('#dedit', d).onclick = function () { d.close(); editClient(c); };
@@ -479,8 +588,8 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
     function q(v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
     var rows = [['Cliente', 'Servicio', 'Fecha de ingreso', 'Estado', 'Cuentas publicitarias', 'Monto acordado', 'Moneda', 'Frecuencia', 'Total cobrado', 'Debe', 'De eso, atrasado', 'WhatsApp', 'Notas']];
     C().forEach(function (c) { var cu = cuenta(c); rows.push([c.nombre, c.servicio, c.fecha_ingreso, c.estado, n(c.cuentas_publicitarias), n(c.monto), c.moneda, c.frecuencia === 'unico' ? 'pago único' : 'mensual', pagado(c), cu.deuda, cu.atrasada, c.contacto, c.notas]); });
-    rows.push([]); rows.push(['PAGOS']); rows.push(['Cliente', 'Fecha', 'Corresponde a', 'Monto', 'Moneda', 'Medio', 'Nota']);
-    P().slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).forEach(function (p) { var c = byId(p.cliente_id); rows.push([c ? c.nombre : '(cliente borrado)', p.fecha, p.periodo, n(p.monto), p.moneda, p.medio, p.nota]); });
+    rows.push([]); rows.push(['PAGOS']); rows.push(['Cliente', 'Fecha', 'Corresponde a', 'Monto', 'Moneda', 'Medio', 'Nota', 'Fecha para el resto']);
+    P().slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).forEach(function (p) { var c = byId(p.cliente_id); rows.push([c ? c.nombre : '(cliente borrado)', p.fecha, p.periodo, n(p.monto), p.moneda, p.medio, p.nota, p.resto_vence || '']); });
     var csv = '﻿' + rows.map(function (r) { return r.map(q).join(';'); }).join('\n');
     if (!dl) { toast('Descargar no está disponible en esta vista. Abrí el panel en claude.ai desde la compu.'); return; }
     try { await dl.save({ filename: 'cuentas-agencia-' + today() + '.csv', data: csv }); toast('Planilla descargada: se abre con Excel o Google Sheets'); }
@@ -500,10 +609,10 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       ['ej6', 'Sur', 'Pauta Meta Ads', 200, 2, 600, 'USD', 'mensual', 'baja', -4, ''],
     ].map(function (x) { return { id: x[0], nombre: x[1], servicio: x[2], fecha_ingreso: dAgo(x[3]), cuentas_publicitarias: x[4], monto: x[5], moneda: x[6], frecuencia: x[7], estado: x[8], cobrar_desde: addMes(m0, x[9]), contacto: '', notas: x[10] === 'Ejemplo' ? '' : x[10] }; });
     var ps = [];
-    function pay(id, k, monto, medio, dia) { var c = cl.find(function (x) { return x.id === id; }), p = addMes(m0, k); ps.push({ id: 'p' + ps.length, cliente_id: id, periodo: p, monto: monto, moneda: c.moneda, medio: medio, fecha: p + '-' + String(Math.min(dia || 5, t.getDate())).padStart(2, '0'), nota: '' }); }
+    function pay(id, k, monto, medio, dia, resto) { var c = cl.find(function (x) { return x.id === id; }), p = addMes(m0, k), f = p + '-' + String(k < 0 ? (dia || 5) : Math.min(dia || 5, t.getDate())).padStart(2, '0'); var o = { id: 'p' + ps.length, cliente_id: id, periodo: p, monto: monto, moneda: c.moneda, medio: medio, fecha: f, nota: '' }; if (resto != null) o.resto_vence = dAgo(-resto); ps.push(o); }
     pay('ej1', -3, 700, 'Transferencia'); pay('ej1', -2, 700, 'Transferencia'); pay('ej1', -1, 700, 'Cripto'); pay('ej1', 0, 700, 'Transferencia', 3);
-    pay('ej2', -2, 900, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia', 16); pay('ej2', 0, 450, 'Transferencia', 4);
-    pay('ej3', -1, 500, 'Mercado Pago'); pay('ej4', -1, 350000, 'Transferencia'); pay('ej4', 0, 200000, 'Efectivo', 8); pay('ej5', -1, 200, 'Mercado Pago', 20);
+    pay('ej2', -2, 900, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia', 16); pay('ej2', 0, 450, 'Transferencia', 4, 3);
+    pay('ej3', -1, 500, 'Mercado Pago'); pay('ej4', -1, 350000, 'Transferencia'); pay('ej4', 0, 200000, 'Efectivo', 8, -2); pay('ej5', -1, 200, 'Mercado Pago', 20, 6);
     pay('ej6', -4, 600, 'Transferencia'); pay('ej6', -3, 600, 'Transferencia');
     return { clientes: cl, pagos: ps };
   })();
