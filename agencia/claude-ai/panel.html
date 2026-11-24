@@ -96,6 +96,11 @@ h1 { font: 800 clamp(30px, 4.4vw, 42px)/1.05 var(--fd); letter-spacing: -.025em;
 .debt .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end }
 .empty { padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line2); border-radius: 14px; margin-top: 16px; font-size: 14px }
 
+/* solo lectura (socio): se ocultan los controles que cambian datos */
+body.ro #new, body.ro [data-pay], body.ro [data-edit], body.ro [data-resto], body.ro [data-fecha], body.ro [data-del], body.ro #dedit, body.ro #dpay, body.ro .tacts { display: none !important }
+.ro-band { display: flex; align-items: center; gap: 10px; padding: 11px 15px; border-radius: 14px; border: 1px solid var(--line2); background: var(--card); margin-bottom: 16px; font-size: 14px; color: var(--text2) }
+.ro-band b { color: var(--text) }
+
 /* pagos parciales */
 .parc { margin-bottom: 12px }
 .psum { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--text2) }
@@ -268,7 +273,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
   var MEDIOS = ['Transferencia', 'Efectivo', 'Mercado Pago', 'Cripto', 'Otro'];
 
   // ------------------------------------------------------------ estado
-  var S = { db: null, clientes: [], pagos: [], loaded: { c: false, p: false }, demo: false, filtro: 'activos', q: '', orden: 'deuda', dir: 1, dl: null };
+  var S = { owner: true, db: null, clientes: [], pagos: [], loaded: { c: false, p: false }, demo: false, filtro: 'activos', q: '', orden: 'deuda', dir: 1, dl: null };
   function C() { return S.demo ? DEMO.clientes : S.clientes; }
   function P() { return S.demo ? DEMO.pagos : S.pagos; }
 
@@ -310,7 +315,10 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
   function render() {
     if (!S.demo && (!S.loaded.c || !S.loaded.p)) return;
     var clientes = C(), hoy = mes();
-    if (!clientes.length && !S.demo) { app.innerHTML = welcome(); bindWelcome(); return; }
+    if (!clientes.length && !S.demo) {
+      if (!S.owner) { app.innerHTML = '<div class="card welcome"><h2>Todavía no hay clientes cargados</h2><p>Cuando el dueño del panel cargue clientes y pagos, los vas a ver acá en tiempo real.</p><div class="actions"><button class="btn" id="tryDemo">Ver cómo se ve con un ejemplo</button></div></div>'; $('#tryDemo').onclick = function () { S.demo = true; render(); }; return; }
+      app.innerHTML = welcome(); bindWelcome(); return;
+    }
     clientes.forEach(function (c) { c._c = cuenta(c); c._total = pagado(c); });
     var act = clientes.filter(function (c) { return c.estado === 'activo'; });
     var pagosMes = P().filter(function (p) { return mes(p.fecha) === hoy; });
@@ -324,6 +332,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
     var deben = clientes.filter(function (c) { return c._c.deuda > 0; }).sort(function (a, b) { return (b._c.atrasada > 0) - (a._c.atrasada > 0) || b._c.deuda - a._c.deuda; });
 
     var h = '';
+    if (!S.owner && !S.demo) h += '<div class="ro-band">👁 <span><b>Modo lectura.</b> Ves todo lo que carga el dueño del panel, en tiempo real. Los cambios los hace él.</span></div>';
     if (S.demo) h += '<div class="demo-band"><span><b>Ejemplo.</b> Estás viendo datos inventados para conocer el panel. Nada de esto se guarda.</span><button class="btn sm" id="exitDemo">Salir del ejemplo</button></div>';
     h += '<div class="head"><div><span class="eyebrow">Cuentas de la agencia · ' + mesLargo(hoy) + '</span><h1>Clientes y cobros</h1><p class="sub">' + act.length + (act.length === 1 ? ' cliente activo' : ' clientes activos') + ' · ' + cuentasAds + (cuentasAds === 1 ? ' cuenta publicitaria gestionada' : ' cuentas publicitarias gestionadas') + '</p></div>' +
       '<div class="actions"><button class="btn" id="export">' + IC.dl + ' Exportar planilla</button><button class="btn pri" id="new">' + IC.plus + ' Nuevo cliente</button></div></div>';
@@ -433,7 +442,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
 
   // ------------------------------------------------------------ guardado
   function demoGuard() { if (S.demo) { toast('Es un ejemplo: salí del ejemplo para cargar tus datos'); return true; } if (!S.db) { toast('No hay conexión con la base: abrí el panel desde claude.ai'); return true; } return false; }
-  function failMsg(e) { var c = e && e.code; return c === 'quota_exceeded' ? 'Se llenó el espacio de la base. Exportá y borrá pagos viejos.' : c === 'invalid_argument' ? 'Solo el dueño del panel puede guardar cambios.' : 'No se pudo guardar. Revisá tu conexión y probá de nuevo.'; }
+  function failMsg(e) { var c = e && e.code; return c === 'quota_exceeded' ? 'Se llenó el espacio de la base. Exportá y borrá pagos viejos.' : c === 'invalid_argument' ? 'Solo el dueño del panel puede guardar cambios: vos lo ves en modo lectura.' : 'No se pudo guardar. Revisá tu conexión y probá de nuevo.'; }
   async function retry(fn) { try { return await fn(); } catch (e) { if (e && e.code === 'unavailable') { await new Promise(function (r) { setTimeout(r, 600 + Math.random() * 600); }); return fn(); } throw e; } }
 
   // ------------------------------------------------------------ diálogos
@@ -621,6 +630,10 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
   var timer = setTimeout(function () { if (!S.loaded.c || !S.loaded.p) { sync('warn', 'Sin conexión todavía'); if (!S.db) { app.innerHTML = noDb(); bindNoDb(); } else app.innerHTML = '<div class="card welcome"><h2>Todavía no pude traer tus datos</h2><p>Puede ser la conexión. Esperá unos segundos: en cuanto responda, aparecen solos.</p></div>'; } }, 10000);
   function noDb() { return '<div class="card welcome"><h2>Este panel guarda tus datos en claude.ai</h2><p>Abrilo desde tu cuenta de claude.ai (en la compu o en la app) para ver y cargar tus clientes. Mientras tanto podés ver cómo funciona con un ejemplo.</p><div class="actions"><button class="btn" id="tryDemo">Ver el ejemplo</button></div></div>'; }
   function bindNoDb() { $('#tryDemo').onclick = function () { S.demo = true; render(); }; }
+  use('user').then(function (u) {
+    if (!u) return;
+    u.isOwner().then(function (own) { S.owner = own !== false; document.body.classList.toggle('ro', !S.owner); if (!S.owner) sync('ok', 'Solo lectura'); render(); }, function () {});
+  });
   use('db').then(function (db) {
     if (!db) { clearTimeout(timer); sync('bad', 'Sin base de datos'); app.innerHTML = noDb(); bindNoDb(); return; }
     S.db = db;
@@ -629,7 +642,7 @@ dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
       var list = s.docs.map(function (d) { var x = Object.assign({}, d.data()); x.id = d.id; return x; });
       if (key === 'c') S.clientes = list; else S.pagos = list;
       S.loaded[key] = true;
-      if (!s.metadata.fromCache && S.loaded.c && S.loaded.p) { clearTimeout(timer); sync('ok', s.metadata.hasPendingWrites ? 'Guardando…' : 'Guardado'); }
+      if (!s.metadata.fromCache && S.loaded.c && S.loaded.p) { clearTimeout(timer); sync('ok', !S.owner ? 'Solo lectura · al día' : s.metadata.hasPendingWrites ? 'Guardando…' : 'Guardado'); }
       render();
     }; }
     db.collection('clientes').onSnapshot(snap('c'), onErr);
