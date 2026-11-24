@@ -1,0 +1,530 @@
+<title>Agencia PanelPro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap">
+<style>
+/* Panel interno de cuentas: oscuro por defecto, tarjetas sobre fondo profundo, una columna en celular. */
+:root {
+  --bg: #070b12; --bg2: #0c121c; --card: #0f1622; --card2: #141d2b; --line: #1d2736; --line2: #2a3547;
+  --text: #eef1f6; --text2: #a9b3c3; --muted: #717d90;
+  --brand: #2b4dff; --brand2: #3a5bff; --green: #2ee59d; --amber: #fbbf24; --red: #ff6b6b; --blue: #6e9cff; --violet: #b18cff;
+  --ok-bg: rgba(46,229,157,.13); --warn-bg: rgba(251,191,36,.14); --bad-bg: rgba(255,107,107,.14); --none-bg: rgba(255,255,255,.06);
+  --shadow: 0 30px 80px -40px rgba(0,0,0,.9);
+  --f: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fd: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #f3f5f9; --bg2: #e9edf4; --card: #ffffff; --card2: #f6f8fb; --line: #e3e8f0; --line2: #d3dae6;
+  --text: #0c111b; --text2: #3f4a5c; --muted: #6b7587;
+  --brand: #2443e6; --brand2: #2f50f2; --green: #0f9f6b; --amber: #b7791f; --red: #d64545; --blue: #2f5fd0; --violet: #7c4fd6;
+  --ok-bg: rgba(15,159,107,.12); --warn-bg: rgba(183,121,31,.13); --bad-bg: rgba(214,69,69,.11); --none-bg: rgba(12,17,27,.05);
+  --shadow: 0 24px 60px -36px rgba(15,23,42,.35); color-scheme: light;
+} }
+:root[data-theme="light"] {
+  --bg: #f3f5f9; --bg2: #e9edf4; --card: #ffffff; --card2: #f6f8fb; --line: #e3e8f0; --line2: #d3dae6;
+  --text: #0c111b; --text2: #3f4a5c; --muted: #6b7587;
+  --brand: #2443e6; --brand2: #2f50f2; --green: #0f9f6b; --amber: #b7791f; --red: #d64545; --blue: #2f5fd0; --violet: #7c4fd6;
+  --ok-bg: rgba(15,159,107,.12); --warn-bg: rgba(183,121,31,.13); --bad-bg: rgba(214,69,69,.11); --none-bg: rgba(12,17,27,.05);
+  --shadow: 0 24px 60px -36px rgba(15,23,42,.35); color-scheme: light;
+}
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--f); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit }
+[hidden] { display: none !important }
+.num { font-variant-numeric: tabular-nums }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 22px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+
+/* barra superior */
+.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 26px }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 17px var(--fd); letter-spacing: -.01em }
+.mark { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(135deg, var(--brand), #6e7bff) }
+.brand small { font: 600 13px var(--f); color: var(--text2); padding-left: 10px; margin-left: 2px; border-left: 1px solid var(--line2) }
+.sync { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text2); padding: 6px 11px; border: 1px solid var(--line); border-radius: 99px; background: var(--card) }
+.sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted) }
+.sync.ok i { background: var(--green) } .sync.warn i { background: var(--amber) } .sync.bad i { background: var(--red) }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line2); background: var(--card); cursor: pointer; font-weight: 600; font-size: 14px; text-decoration: none; color: var(--text); white-space: nowrap; transition: background .15s, border-color .15s }
+.btn:hover { border-color: var(--muted) }
+.btn:focus-visible, .chip:focus-visible, .link:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .row-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px }
+.btn.pri { background: var(--brand); border-color: var(--brand); color: #fff }
+.btn.pri:hover { background: var(--brand2) }
+.btn.ok { background: var(--green); border-color: var(--green); color: #04150e }
+.btn.danger { color: var(--red); border-color: color-mix(in srgb, var(--red) 40%, transparent) }
+.btn.sm { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 10px }
+.btn svg { width: 17px; height: 17px; flex: none }
+.btn:disabled { opacity: .5; cursor: default }
+.link { background: none; border: 0; padding: 0; color: var(--blue); cursor: pointer; font-weight: 600; text-decoration: underline; text-underline-offset: 3px }
+
+/* encabezado */
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px }
+.eyebrow { font: 600 11.5px var(--f); letter-spacing: .16em; text-transform: uppercase; color: var(--text2) }
+h1 { font: 800 clamp(30px, 4.4vw, 42px)/1.05 var(--fd); letter-spacing: -.025em; margin: 8px 0 6px; text-wrap: balance }
+.sub { color: var(--text2); margin: 0; font-size: 14.5px }
+.actions { display: flex; gap: 8px; flex-wrap: wrap }
+
+/* banda de ejemplo */
+.demo-band { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--violet) 55%, transparent); background: color-mix(in srgb, var(--violet) 9%, transparent); margin-bottom: 16px; font-size: 14px; color: var(--text2) }
+.demo-band b { color: var(--violet) }
+.demo-band .btn { margin-left: auto }
+
+/* tarjetas y KPIs */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; min-width: 0; box-shadow: var(--shadow) }
+.kpis { display: grid; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 12px }
+.kpi .lbl { display: flex; align-items: center; gap: 10px; font: 600 11.5px var(--f); letter-spacing: .14em; text-transform: uppercase; color: var(--text2) }
+.kpi .lbl span { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); flex: none }
+.kpi .lbl svg { width: 16px; height: 16px }
+.kpi .val { font: 800 clamp(24px, 2.6vw, 31px)/1.1 var(--fd); letter-spacing: -.02em; margin-top: 14px; overflow-wrap: anywhere }
+.kpi .val small { display: block; font-size: .62em; color: var(--text2); font-weight: 700 }
+.kpi .note { color: var(--muted); font-size: 13px; margin-top: 8px }
+.bar { height: 7px; border-radius: 99px; background: var(--none-bg); overflow: hidden; margin-top: 12px }
+.bar i { display: block; height: 100%; border-radius: inherit; background: var(--green) }
+.grid2 { display: grid; gap: 12px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); margin-bottom: 12px }
+.ch { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap }
+.ch h2 { font: 700 18px var(--fd); margin: 0; letter-spacing: -.01em }
+.ch p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px }
+.ch .grow { flex: 1; min-width: 0 }
+
+/* quién debe */
+.debts { display: grid; gap: 10px; margin-top: 16px }
+.debt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px 15px; border: 1px solid var(--line2); border-left: 4px solid var(--amber); border-radius: 14px; background: var(--card2) }
+.debt.late { border-left-color: var(--red) }
+.debt h3 { margin: 0; font-size: 15px; font-weight: 600 }
+.debt h3 b { font-weight: 700 }
+.debt p { margin: 3px 0 0; font-size: 13px; color: var(--text2) }
+.debt .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line2); border-radius: 14px; margin-top: 16px; font-size: 14px }
+
+/* gráfico */
+.chart { width: 100%; height: auto; display: block; margin-top: 10px }
+.chart .gl { stroke: var(--line); stroke-dasharray: 3 5 }
+.chart .bp { fill: color-mix(in srgb, var(--green) 55%, transparent) }
+.chart .bn { fill: var(--green) }
+.chart .exp { stroke: var(--text2); stroke-width: 2; stroke-dasharray: 5 4 }
+.chart text { fill: var(--muted); font: 600 12px var(--f) }
+.chart .tv { fill: var(--text2); font: 700 12.5px var(--f) }
+.chart .tnow { fill: var(--green) }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-top: 6px }
+.legend span { display: inline-flex; align-items: center; gap: 7px }
+.legend i { width: 14px; height: 9px; border-radius: 3px; background: var(--green) }
+.legend i.e { height: 0; border-top: 2px dashed var(--text2); border-radius: 0 }
+
+/* tabla */
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 14px 0 6px }
+.chip { border: 1px solid var(--line2); background: transparent; color: var(--text2); border-radius: 99px; padding: 7px 13px; font-size: 13px; font-weight: 600; cursor: pointer }
+.chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text) }
+.chip em { font-style: normal; opacity: .65; margin-left: 4px }
+.search { margin-left: auto; min-height: 38px; width: 240px; max-width: 100%; padding: 0 13px; border-radius: 11px; border: 1px solid var(--line2); background: var(--bg2); color: var(--text) }
+.tbl { overflow-x: auto; margin: 0 -4px }
+table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 820px }
+th { text-align: left; font: 600 11px var(--f); letter-spacing: .13em; text-transform: uppercase; color: var(--muted); padding: 11px 10px; border-bottom: 1px solid var(--line2); white-space: nowrap }
+th button { all: unset; cursor: pointer }
+th button:focus-visible { outline: 2px solid var(--brand) }
+td { padding: 13px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+tr.off td { opacity: .55 }
+td .m { color: var(--muted); font-size: 12.5px }
+.row-btn { all: unset; cursor: pointer; font-weight: 700 }
+.row-btn:hover { text-decoration: underline; text-underline-offset: 3px }
+.pill { display: inline-block; font: 700 11.5px var(--f); padding: 3px 9px; border-radius: 99px; white-space: nowrap }
+.pill.ok { color: var(--green); background: var(--ok-bg) } .pill.warn { color: var(--amber); background: var(--warn-bg) }
+.pill.bad { color: var(--red); background: var(--bad-bg) } .pill.none { color: var(--muted); background: var(--none-bg) }
+.note-tag { display: inline-block; margin-top: 5px; font-size: 12.5px; color: var(--text2); background: color-mix(in srgb, var(--violet) 12%, transparent); border-radius: 8px; padding: 2px 8px; max-width: 300px }
+.tacts { display: flex; gap: 6px; flex-wrap: wrap }
+
+/* diálogos */
+dialog { border: 0; padding: 0; background: transparent; color: var(--text); max-width: calc(100vw - 24px); width: 560px }
+dialog::backdrop { background: rgba(3,6,12,.66); backdrop-filter: blur(4px) }
+.modal { background: var(--card); border: 1px solid var(--line2); border-radius: 22px; padding: 24px; box-shadow: var(--shadow); max-height: calc(100vh - 32px); overflow: auto }
+.modal h2 { font: 800 22px var(--fd); margin: 0 0 4px; letter-spacing: -.015em }
+.modal .lead { color: var(--text2); margin: 0 0 16px; font-size: 14px }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px }
+.fsec { grid-column: 1 / -1; font: 600 11px var(--f); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 6px }
+.field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text2); min-width: 0 }
+.field.full { grid-column: 1 / -1 }
+.field input, .field select, .field textarea { width: 100%; min-height: 44px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--line2); background: var(--bg2); font-size: 15px; font-weight: 500; color: var(--text) }
+.field textarea { padding: 10px 12px; min-height: 70px; resize: vertical }
+.field small { font-weight: 500; color: var(--muted) }
+.calc { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: 12px; background: var(--bg2); font-size: 14px; color: var(--text2); margin-top: 14px }
+.calc b { color: var(--text) }
+.err { color: var(--red); font-size: 13.5px; min-height: 1em; margin: 10px 0 0 }
+.mrow { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 16px }
+.mrow .left { margin-right: auto }
+.facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 }
+.fact { background: var(--bg2); border-radius: 12px; padding: 10px 12px; min-width: 0 }
+.fact small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase }
+.fact b { display: block; margin-top: 3px; font-size: 15px; overflow-wrap: anywhere }
+.months { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px }
+.mo { font: 700 11.5px var(--f); padding: 5px 9px; border-radius: 8px; background: var(--none-bg); color: var(--muted); text-transform: capitalize }
+.mo.pagado { background: var(--ok-bg); color: var(--green) } .mo.parcial { background: var(--warn-bg); color: var(--amber) } .mo.pendiente { background: var(--bad-bg); color: var(--red) }
+.plist { display: grid; gap: 8px; max-height: 36vh; overflow: auto }
+.pi { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid var(--line2); border-radius: 12px; font-size: 14px }
+.pi .m { color: var(--muted); font-size: 12.5px }
+
+.toast { position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translate(-50%, -12px); opacity: 0; visibility: hidden; background: var(--text); color: var(--bg); font-weight: 600; font-size: 14px; padding: 10px 16px; border-radius: 12px; transition: opacity .2s, transform .2s, visibility .2s; z-index: 50; max-width: calc(100vw - 32px) }
+.toast.on { opacity: 1; visibility: visible; transform: translate(-50%, 0) }
+.loading { padding: 60px 0; text-align: center; color: var(--muted) }
+.welcome { text-align: center; padding: 44px 20px }
+.welcome h2 { font: 800 24px var(--fd); margin: 14px 0 6px; letter-spacing: -.015em }
+.welcome p { color: var(--text2); max-width: 520px; margin: 0 auto 18px }
+.welcome .actions { justify-content: center }
+
+@media (max-width: 980px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)) } .grid2 { grid-template-columns: minmax(0, 1fr) } }
+@media (max-width: 560px) {
+  .fgrid { grid-template-columns: 1fr } .facts { grid-template-columns: 1fr 1fr }
+  .debt { grid-template-columns: 1fr } .debt .acts { justify-content: flex-start }
+  .search { width: 100%; margin-left: 0 } .sync { margin-left: 0 }
+  .head .actions { width: 100% } .head .actions .btn { flex: 1 }
+}
+@media (prefers-reduced-motion: reduce) { .toast, .btn { transition: none } }
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="mark"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 12 6 7l3 3 5-7" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>PanelPro <small>Agencia</small></div>
+    <span class="sync" id="sync" role="status"><i></i><span>Conectando…</span></span>
+  </div>
+  <div id="app"><p class="loading">Cargando tus cuentas…</p></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  // ------------------------------------------------------------ utilidades
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function n(v) { var x = Number(v); return isFinite(x) ? x : 0; }
+  function fmt(v) { return Math.round(n(v)).toLocaleString('es-AR'); }
+  function cur(v, m) { return (m === 'ARS' ? '$' : 'US$ ') + fmt(v); }
+  function short(v) { v = n(v); return v >= 1e6 ? (v / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 }) + 'M' : v >= 1e4 ? Math.round(v / 1e3).toLocaleString('es-AR') + 'K' : fmt(v); }
+  function use(name) { try { return window.claude && window.claude.use ? window.claude.use(name) : Promise.resolve(null); } catch (e) { return Promise.resolve(null); } }
+  function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function today() { return iso(new Date()); }
+  function parse(s) { var p = String(s).split('-'); return new Date(+p[0], +p[1] - 1, +(p[2] || 1)); }
+  var MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  var MESL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  function mes(d) { return String(d || today()).slice(0, 7); }
+  function addMes(p, k) { var x = p.split('-'), d = new Date(+x[0], +x[1] - 1 + k, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function mesesEntre(a, b) { var out = [], c = a; while (c <= b && out.length < 120) { out.push(c); c = addMes(c, 1); } return out; }
+  function mesLargo(p) { var x = p.split('-'); return MESL[+x[1] - 1] + ' ' + x[0]; }
+  function mesCorto(p) { var x = p.split('-'); return MES[+x[1] - 1] + (x[0] !== today().slice(0, 4) ? " '" + x[0].slice(2) : ''); }
+  function fecha(s) { var d = parse(s); return d.getDate() + ' ' + MES[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : ''); }
+  function antig(s) { var a = parse(s), b = new Date(), m = (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth(); return m < 1 ? 'este mes' : m === 1 ? 'hace 1 mes' : m < 12 ? 'hace ' + m + ' meses' : 'hace ' + Math.floor(m / 12) + (m >= 24 ? ' años' : ' año') + (m % 12 ? ' y ' + (m % 12) + ' m' : ''); }
+  function toast(m) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('on'); }, 2800); }
+  function wa(num, text) { var d = String(num || '').replace(/\D/g, ''); return d ? 'https://wa.me/' + d + '?text=' + encodeURIComponent(text) : null; }
+  function sync(kind, text) { var s = $('#sync'); s.className = 'sync ' + kind; s.lastChild.textContent = text; }
+  var IC = {
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M16 12.5h2M3 9.5h13"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l5-5 4 4 7-7M15 8h5v5"/></svg>',
+    grid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
+    wa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/></svg>',
+  };
+  var MEDIOS = ['Transferencia', 'Efectivo', 'Mercado Pago', 'Cripto', 'Otro'];
+
+  // ------------------------------------------------------------ estado
+  var S = { db: null, clientes: [], pagos: [], loaded: { c: false, p: false }, demo: false, filtro: 'activos', q: '', orden: 'deuda', dir: 1, dl: null };
+  function C() { return S.demo ? DEMO.clientes : S.clientes; }
+  function P() { return S.demo ? DEMO.pagos : S.pagos; }
+
+  // ------------------------------------------------------------ cálculos de cuenta
+  function pagado(c, periodo) { return P().filter(function (p) { return p.cliente_id === c.id && (!periodo || p.periodo === periodo); }).reduce(function (s, p) { return s + n(p.monto); }, 0); }
+  // Mes por mes, desde "cobrar_desde" hasta hoy: cuánto se esperaba, cuánto pagó, cuánto falta.
+  function cuenta(c) {
+    var hoy = mes(), desde = mes(c.cobrar_desde || c.fecha_ingreso), monto = n(c.monto), r = { meses: [], deuda: 0, atrasada: 0 };
+    if (c.frecuencia === 'unico') {
+      var pg = pagado(c), f = Math.max(0, monto - pg);
+      r.actual = { periodo: desde, esperado: monto, pagado: pg, falta: f, estado: !monto ? 'sin' : f <= 0 ? 'pagado' : pg > 0 ? 'parcial' : 'pendiente' };
+      r.meses.push(r.actual); r.deuda = f; if (desde < hoy) r.atrasada = f; return r;
+    }
+    mesesEntre(desde, hoy).forEach(function (p) {
+      var cobra = c.estado === 'activo' || P().some(function (x) { return x.cliente_id === c.id && x.periodo === p; });
+      var esp = cobra ? monto : 0, pg = pagado(c, p), f = Math.max(0, esp - pg);
+      var m = { periodo: p, esperado: esp, pagado: pg, falta: f, estado: !esp ? (pg ? 'pagado' : 'sin') : f <= 0 ? 'pagado' : pg > 0 ? 'parcial' : 'pendiente' };
+      r.meses.push(m); r.deuda += f; if (p < hoy) r.atrasada += f;
+    });
+    r.actual = r.meses[r.meses.length - 1] || { periodo: hoy, esperado: 0, pagado: 0, falta: 0, estado: 'sin' };
+    return r;
+  }
+  function por(list, f) { var o = { USD: 0, ARS: 0 }; list.forEach(function (x) { o[x.moneda === 'ARS' ? 'ARS' : 'USD'] += f(x); }); return o; }
+  function dual(o) { var s = []; if (o.USD || !o.ARS) s.push(cur(o.USD, 'USD')); if (o.ARS) s.push(cur(o.ARS, 'ARS')); return s.length === 2 ? s[0] + '<small>+ ' + s[1] + '</small>' : s[0]; }
+  function pill(m, moneda) {
+    if (m.estado === 'pagado') return '<span class="pill ok">Pagado</span>';
+    if (m.estado === 'parcial') return '<span class="pill warn">Parcial · falta ' + esc(cur(m.falta, moneda)) + '</span>';
+    if (m.estado === 'pendiente') return '<span class="pill bad">Pendiente</span>';
+    return '<span class="pill none">Sin cobro</span>';
+  }
+
+  // ------------------------------------------------------------ vista
+  var app = $('#app');
+  function render() {
+    if (!S.demo && (!S.loaded.c || !S.loaded.p)) return;
+    var clientes = C(), hoy = mes();
+    if (!clientes.length && !S.demo) { app.innerHTML = welcome(); bindWelcome(); return; }
+    clientes.forEach(function (c) { c._c = cuenta(c); c._total = pagado(c); });
+    var act = clientes.filter(function (c) { return c.estado === 'activo'; });
+    var pagosMes = P().filter(function (p) { return mes(p.fecha) === hoy; });
+    var cobrado = por(pagosMes, function (p) { return n(p.monto); });
+    var esperadoMes = por(clientes, function (c) { return c._c.actual && c._c.actual.periodo === hoy ? c._c.actual.esperado : 0; });
+    var porCobrar = por(clientes, function (c) { return c._c.deuda; });
+    var fijo = por(act.filter(function (c) { return c.frecuencia !== 'unico'; }), function (c) { return n(c.monto); });
+    var cuentasAds = act.reduce(function (s, c) { return s + n(c.cuentas_publicitarias); }, 0);
+    var main = fijo.ARS > 0 && !fijo.USD ? 'ARS' : 'USD';
+    var pctMes = esperadoMes[main] ? Math.min(100, cobrado[main] / esperadoMes[main] * 100) : 0;
+    var deben = clientes.filter(function (c) { return c._c.deuda > 0; }).sort(function (a, b) { return (b._c.atrasada > 0) - (a._c.atrasada > 0) || b._c.deuda - a._c.deuda; });
+
+    var h = '';
+    if (S.demo) h += '<div class="demo-band"><span><b>Ejemplo.</b> Estás viendo datos inventados para conocer el panel. Nada de esto se guarda.</span><button class="btn sm" id="exitDemo">Salir del ejemplo</button></div>';
+    h += '<div class="head"><div><span class="eyebrow">Cuentas de la agencia · ' + mesLargo(hoy) + '</span><h1>Clientes y cobros</h1><p class="sub">' + act.length + (act.length === 1 ? ' cliente activo' : ' clientes activos') + ' · ' + cuentasAds + (cuentasAds === 1 ? ' cuenta publicitaria gestionada' : ' cuentas publicitarias gestionadas') + '</p></div>' +
+      '<div class="actions"><button class="btn" id="export">' + IC.dl + ' Exportar planilla</button><button class="btn pri" id="new">' + IC.plus + ' Nuevo cliente</button></div></div>';
+    h += '<section class="kpis">' +
+      kpi('var(--green)', IC.wallet, 'Cobrado este mes', dual(cobrado), (esperadoMes[main] ? Math.round(pctMes) + '% de ' + cur(esperadoMes[main], main) + ' esperados' : pagosMes.length + ' pagos'), esperadoMes[main] ? pctMes : null) +
+      kpi(porCobrar.USD || porCobrar.ARS ? 'var(--red)' : 'var(--green)', IC.clock, 'Por cobrar', dual(porCobrar), deben.length ? deben.length + (deben.length === 1 ? ' cliente debe' : ' clientes deben') : 'Todos al día') +
+      kpi('var(--blue)', IC.up, 'Ingreso mensual fijo', dual(fijo), 'abonos mensuales activos') +
+      kpi('var(--violet)', IC.grid, 'Cuentas gestionadas', String(cuentasAds), 'en ' + act.length + (act.length === 1 ? ' cliente' : ' clientes')) + '</section>';
+    h += '<section class="grid2"><article class="card"><div class="ch"><div class="grow"><h2>Quién debe</h2><p>Primero los atrasados, después los del mes en curso</p></div></div>' +
+      (deben.length ? '<div class="debts">' + deben.map(debtRow).join('') + '</div>' : '<div class="empty">Nadie debe nada. Todos los clientes están al día.</div>') + '</article>' +
+      '<article class="card"><div class="ch"><div class="grow"><h2>Cobrado por mes</h2><p>Últimos 6 meses, en ' + (main === 'ARS' ? 'pesos' : 'dólares') + '</p></div></div>' + chart(main) +
+      '<div class="legend"><span><i></i>Cobrado</span><span><i class="e"></i>Lo que se esperaba cobrar</span></div></article></section>';
+    h += '<article class="card"><div class="ch"><div class="grow"><h2>Todos los clientes</h2><p>Tocá un nombre para ver su historial completo</p></div></div>' +
+      '<div class="tools">' + [['activos', 'Activos'], ['deben', 'Deben'], ['inactivos', 'Pausados y bajas'], ['todos', 'Todos']].map(function (f) {
+        var k = clientes.filter(filtroFn(f[0])).length; return '<button class="chip" data-f="' + f[0] + '" aria-pressed="' + (S.filtro === f[0]) + '">' + f[1] + '<em>' + k + '</em></button>';
+      }).join('') + '<input class="search" id="q" type="search" placeholder="Buscar cliente o servicio" aria-label="Buscar cliente o servicio" value="' + esc(S.q) + '"></div>' + table(clientes) + '</article>';
+    app.innerHTML = h;
+    bind();
+  }
+  function kpi(c, ic, lbl, val, note, pct) { return '<article class="card kpi" style="--c:' + c + '"><div class="lbl"><span>' + ic + '</span>' + lbl + '</div><div class="val num">' + val + '</div>' + (pct != null ? '<div class="bar" aria-hidden="true"><i style="width:' + pct.toFixed(0) + '%"></i></div>' : '') + '<div class="note">' + esc(note) + '</div></article>'; }
+  function debtRow(c) {
+    var det = c._c.meses.filter(function (m) { return m.falta > 0; }).map(function (m) { return mesCorto(m.periodo) + ': ' + (m.estado === 'parcial' ? 'pagó ' + cur(m.pagado, c.moneda) + ' de ' + cur(m.esperado, c.moneda) : 'no pagó ' + cur(m.esperado, c.moneda)); }).join(' · ');
+    var link = wa(c.contacto, 'Hola! Te escribo por el saldo pendiente de ' + cur(c._c.deuda, c.moneda) + '. ¿Me pasás el comprobante cuando lo tengas? Gracias!');
+    return '<div class="debt' + (c._c.atrasada > 0 ? ' late' : '') + '"><div><h3><b>' + esc(c.nombre) + '</b> · debe <span class="num">' + esc(cur(c._c.deuda, c.moneda)) + '</span>' + (c._c.atrasada > 0 ? ' <span class="pill bad">Atrasado</span>' : '') + '</h3><p>' + esc(det) + '</p></div>' +
+      '<div class="acts"><button class="btn sm ok" data-pay="' + esc(c.id) + '">Registrar pago</button>' + (link ? '<a class="btn sm" href="' + link + '" target="_blank" rel="noopener">' + IC.wa + ' Recordar</a>' : '') + '</div></div>';
+  }
+  function chart(main) {
+    var hoy = mes(), ms = mesesEntre(addMes(hoy, -5), hoy), W = 560, H = 230, L = 8, R = 8, T = 26, B = 28;
+    var cob = ms.map(function (p) { return P().filter(function (x) { return mes(x.fecha) === p && (x.moneda === 'ARS' ? 'ARS' : 'USD') === main; }).reduce(function (s, x) { return s + n(x.monto); }, 0); });
+    var exp = ms.map(function (p) { return C().filter(function (c) { return (c.moneda === 'ARS' ? 'ARS' : 'USD') === main; }).reduce(function (s, c) { var m = (c._c || cuenta(c)).meses.find(function (x) { return x.periodo === p; }); return s + (m && c.frecuencia !== 'unico' ? m.esperado : 0); }, 0); });
+    var max = Math.max.apply(null, cob.concat(exp).concat([1])) * 1.1, iw = W - L - R, ih = H - T - B, slot = iw / ms.length, bw = Math.min(56, slot * .56);
+    function Y(v) { return T + ih - v / max * ih; }
+    var g = '';
+    [0.5, 1].forEach(function (k) { g += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(max / 1.1 * k).toFixed(1) + '" y2="' + Y(max / 1.1 * k).toFixed(1) + '"/>'; });
+    ms.forEach(function (p, i) {
+      var cx = L + slot * i + slot / 2, now = p === hoy, v = cob[i];
+      if (v > 0) g += '<rect class="' + (now ? 'bn' : 'bp') + '" x="' + (cx - bw / 2).toFixed(1) + '" y="' + Y(v).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (T + ih - Y(v)).toFixed(1) + '" rx="7"/>';
+      else g += '<rect class="bp" x="' + (cx - bw / 2).toFixed(1) + '" y="' + (T + ih - 2) + '" width="' + bw.toFixed(1) + '" height="2" rx="1"/>';
+      if (exp[i] > 0) g += '<line class="exp" x1="' + (cx - bw / 2 - 6).toFixed(1) + '" x2="' + (cx + bw / 2 + 6).toFixed(1) + '" y1="' + Y(exp[i]).toFixed(1) + '" y2="' + Y(exp[i]).toFixed(1) + '"/>';
+      g += '<text class="tv' + (now ? ' tnow' : '') + '" x="' + cx.toFixed(1) + '" y="' + Math.max(14, Math.min(Y(v), exp[i] ? Y(exp[i]) : Y(v)) - 8).toFixed(1) + '" text-anchor="middle">' + (v ? (main === 'ARS' ? '$' : 'US$ ') + short(v) : '—') + '</text>';
+      g += '<text x="' + cx.toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + MES[+p.split('-')[1] - 1] + '</text>';
+    });
+    var desc = ms.map(function (p, i) { return mesLargo(p) + ': cobrado ' + cur(cob[i], main) + ', esperado ' + cur(exp[i], main); }).join('; ');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(desc) + '">' + g + '</svg>';
+  }
+  function filtroFn(f) { return function (c) { var d = (c._c || cuenta(c)).deuda; return f === 'todos' ? true : f === 'activos' ? c.estado === 'activo' : f === 'deben' ? d > 0 : c.estado !== 'activo'; }; }
+  function table(clientes) {
+    var q = S.q.trim().toLowerCase(), hoy = mes();
+    var list = clientes.filter(filtroFn(S.filtro)).filter(function (c) { return !q || (String(c.nombre) + ' ' + String(c.servicio || '')).toLowerCase().indexOf(q) >= 0; });
+    var key = { deuda: function (c) { return -c._c.deuda * (c.moneda === 'ARS' ? 0.001 : 1); }, nombre: function (c) { return String(c.nombre).toLowerCase(); }, ingreso: function (c) { return c.fecha_ingreso; }, cuentas: function (c) { return -n(c.cuentas_publicitarias); }, monto: function (c) { return -n(c.monto) * (c.moneda === 'ARS' ? 0.001 : 1); }, total: function (c) { return -c._total * (c.moneda === 'ARS' ? 0.001 : 1); } }[S.orden];
+    list.sort(function (a, b) { var x = key(a), y = key(b); return (x < y ? -1 : x > y ? 1 : String(a.nombre).localeCompare(String(b.nombre))) * S.dir; });
+    function th(k, l) { return '<th><button data-sort="' + k + '" aria-label="Ordenar por ' + l + '">' + l + (S.orden === k ? (S.dir === 1 ? ' ↓' : ' ↑') : '') + '</button></th>'; }
+    if (!list.length) return '<div class="empty">' + (clientes.length ? 'Ningún cliente coincide con este filtro o búsqueda.' : 'Todavía no hay clientes.') + '</div>';
+    return '<div class="tbl"><table><thead><tr>' + th('nombre', 'Cliente') + th('ingreso', 'Ingresó') + th('cuentas', 'Cuentas') + th('monto', 'Acordado') + '<th>' + MESL[+hoy.split('-')[1] - 1] + '</th>' + th('deuda', 'Debe') + th('total', 'Total cobrado') + '<th></th></tr></thead><tbody>' +
+      list.map(function (c) {
+        var m = c._c.actual;
+        return '<tr class="' + (c.estado === 'activo' ? '' : 'off') + '"><td><button class="row-btn" data-open="' + esc(c.id) + '">' + esc(c.nombre) + '</button>' + (c.estado !== 'activo' ? ' <span class="pill none">' + (c.estado === 'baja' ? 'Baja' : 'Pausado') + '</span>' : '') + '<div class="m">' + esc(c.servicio || '—') + '</div>' + (c.notas ? '<span class="note-tag">' + esc(c.notas) + '</span>' : '') + '</td>' +
+          '<td class="num">' + esc(fecha(c.fecha_ingreso)) + '<div class="m">' + esc(antig(c.fecha_ingreso)) + '</div></td>' +
+          '<td class="num"><b>' + n(c.cuentas_publicitarias) + '</b></td>' +
+          '<td class="num"><b>' + esc(cur(c.monto, c.moneda)) + '</b><div class="m">' + (c.frecuencia === 'unico' ? 'pago único' : 'por mes') + '</div></td>' +
+          '<td>' + (c.frecuencia === 'unico' ? (c._c.deuda > 0 ? pill(c._c.actual, c.moneda) : '<span class="pill ok">Pagado</span>') : m.periodo === hoy ? pill(m, c.moneda) : '<span class="pill none">—</span>') + '</td>' +
+          '<td class="num">' + (c._c.deuda > 0 ? '<b style="color:var(--red)">' + esc(cur(c._c.deuda, c.moneda)) + '</b>' + (c._c.atrasada > 0 ? '<div class="m">' + esc(cur(c._c.atrasada, c.moneda)) + ' atrasado</div>' : '') : '<span class="m">—</span>') + '</td>' +
+          '<td class="num"><b>' + esc(cur(c._total, c.moneda)) + '</b></td>' +
+          '<td><div class="tacts"><button class="btn sm ok" data-pay="' + esc(c.id) + '">Pago</button><button class="btn sm" data-edit="' + esc(c.id) + '">Editar</button></div></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  function welcome() {
+    return '<div class="card welcome"><span class="mark" style="width:52px;height:52px;margin:0 auto;border-radius:15px">' + IC.wallet.replace('<svg', '<svg width="24" height="24" style="color:#fff"') + '</span>' +
+      '<h2>Cargá tu primer cliente</h2><p>Acá llevás quién es cada cliente, desde cuándo trabaja con vos, cuántas cuentas le manejás, cuánto paga y quién debe, incluidos los pagos parciales. Todo queda guardado y es privado: solo vos lo ves.</p>' +
+      '<div class="actions"><button class="btn pri" id="new">' + IC.plus + ' Nuevo cliente</button><button class="btn" id="tryDemo">Ver cómo se ve con un ejemplo</button></div></div>';
+  }
+  function bindWelcome() { $('#new').onclick = function () { editClient(null); }; $('#tryDemo').onclick = function () { S.demo = true; render(); }; }
+  function byId(id) { return C().find(function (c) { return c.id === id; }); }
+  function bind() {
+    $('#new').onclick = function () { editClient(null); };
+    $('#export').onclick = exportCsv;
+    if ($('#exitDemo')) $('#exitDemo').onclick = function () { S.demo = false; if (!S.db) { app.innerHTML = noDb(); bindNoDb(); } else if (!S.loaded.c || !S.loaded.p) app.innerHTML = '<p class="loading">Cargando tus cuentas…</p>'; else render(); };
+    $('#q').oninput = function () { S.q = this.value; var pos = this.selectionStart; render(); var i = $('#q'); i.focus(); i.setSelectionRange(pos, pos); };
+    $$('[data-f]').forEach(function (b) { b.onclick = function () { S.filtro = b.dataset.f; render(); }; });
+    $$('[data-sort]').forEach(function (b) { b.onclick = function () { if (S.orden === b.dataset.sort) S.dir = -S.dir; else { S.orden = b.dataset.sort; S.dir = 1; } render(); }; });
+    $$('[data-pay]').forEach(function (b) { b.onclick = function () { payment(byId(b.dataset.pay)); }; });
+    $$('[data-edit]').forEach(function (b) { b.onclick = function () { editClient(byId(b.dataset.edit)); }; });
+    $$('[data-open]').forEach(function (b) { b.onclick = function () { detail(byId(b.dataset.open)); }; });
+  }
+
+  // ------------------------------------------------------------ guardado
+  function demoGuard() { if (S.demo) { toast('Es un ejemplo: salí del ejemplo para cargar tus datos'); return true; } if (!S.db) { toast('No hay conexión con la base: abrí el panel desde claude.ai'); return true; } return false; }
+  function failMsg(e) { var c = e && e.code; return c === 'quota_exceeded' ? 'Se llenó el espacio de la base. Exportá y borrá pagos viejos.' : c === 'invalid_argument' ? 'Solo el dueño del panel puede guardar cambios.' : 'No se pudo guardar. Revisá tu conexión y probá de nuevo.'; }
+  async function retry(fn) { try { return await fn(); } catch (e) { if (e && e.code === 'unavailable') { await new Promise(function (r) { setTimeout(r, 600 + Math.random() * 600); }); return fn(); } throw e; } }
+
+  // ------------------------------------------------------------ diálogos
+  function modal(html) { var d = document.createElement('dialog'); d.innerHTML = '<div class="modal">' + html + '</div>'; document.body.appendChild(d); d.showModal(); d.addEventListener('close', function () { d.remove(); }); d.addEventListener('click', function (e) { if (e.target === d) d.close(); }); return d; }
+  function confirmBtn(btn, label) { if (btn.dataset.sure === '1') return true; btn.dataset.sure = '1'; btn.dataset.orig = btn.textContent; btn.textContent = label; setTimeout(function () { if (btn.isConnected) { btn.dataset.sure = ''; btn.textContent = btn.dataset.orig; } }, 4000); return false; }
+
+  function editClient(c) {
+    var nuevo = !c;
+    c = c || { nombre: '', servicio: 'Pauta Meta Ads', fecha_ingreso: today(), cuentas_publicitarias: 1, monto: '', moneda: 'USD', frecuencia: 'mensual', estado: 'activo', contacto: '', notas: '', cobrar_desde: mes() };
+    var d = modal('<form id="cf" novalidate><h2>' + (nuevo ? 'Nuevo cliente' : 'Editar cliente') + '</h2><p class="lead">' + (nuevo ? 'Completá lo que sepas: después lo podés cambiar.' : esc(c.nombre)) + '</p><div class="fgrid">' +
+      '<label class="field full">Nombre del cliente<input id="f_nombre" required maxlength="80" autocomplete="off" value="' + esc(c.nombre) + '"></label>' +
+      '<label class="field">Servicio<input id="f_servicio" maxlength="80" list="servicios" value="' + esc(c.servicio) + '"></label>' +
+      '<label class="field">Fecha de ingreso<input id="f_ingreso" type="date" required value="' + esc(c.fecha_ingreso) + '"></label>' +
+      '<label class="field">Cuentas publicitarias que le manejás<input id="f_cuentas" type="number" min="0" step="1" inputmode="numeric" value="' + n(c.cuentas_publicitarias) + '"></label>' +
+      '<label class="field">Estado<select id="f_estado">' + [['activo', 'Activo'], ['pausado', 'Pausado'], ['baja', 'Dado de baja']].map(function (x) { return '<option value="' + x[0] + '"' + (c.estado === x[0] ? ' selected' : '') + '>' + x[1] + '</option>'; }).join('') + '</select></label>' +
+      '<span class="fsec">Lo que paga</span>' +
+      '<label class="field">Monto acordado<input id="f_monto" type="number" min="0" step="1" inputmode="decimal" required value="' + (n(c.monto) || '') + '"></label>' +
+      '<label class="field">Moneda<select id="f_moneda"><option value="USD"' + (c.moneda !== 'ARS' ? ' selected' : '') + '>Dólares (US$)</option><option value="ARS"' + (c.moneda === 'ARS' ? ' selected' : '') + '>Pesos ($)</option></select></label>' +
+      '<label class="field">Cómo paga<select id="f_frec"><option value="mensual"' + (c.frecuencia !== 'unico' ? ' selected' : '') + '>Todos los meses</option><option value="unico"' + (c.frecuencia === 'unico' ? ' selected' : '') + '>Pago único</option></select></label>' +
+      '<label class="field">Controlar pagos desde<input id="f_desde" type="month" value="' + esc(mes(c.cobrar_desde)) + '"><small>Los meses anteriores no cuentan como deuda.</small></label>' +
+      '<span class="fsec">Contacto y notas</span>' +
+      '<label class="field full">WhatsApp (con 549…)<input id="f_wa" inputmode="tel" autocomplete="off" placeholder="5491155555555" value="' + esc(c.contacto) + '"></label>' +
+      '<label class="field full">Notas<textarea id="f_notas" maxlength="500" placeholder="Ej: paga en dos partes, factura a nombre de…">' + esc(c.notas) + '</textarea></label>' +
+      '</div><datalist id="servicios"><option>Pauta Meta Ads</option><option>Pauta + Dashboard</option><option>Estructura WhatsApp</option><option>Mentoría 1 a 1</option></datalist>' +
+      '<p class="err" id="cerr" role="alert"></p><div class="mrow">' + (nuevo ? '' : '<button class="btn danger left" type="button" id="cdel">Eliminar cliente</button>') + '<button class="btn" type="button" id="ccancel">Cancelar</button><button class="btn pri" type="submit">Guardar</button></div></form>');
+    $('#f_nombre', d).focus();
+    $('#ccancel', d).onclick = function () { d.close(); };
+    if ($('#cdel', d)) $('#cdel', d).onclick = async function () {
+      if (!confirmBtn(this, '¿Seguro? Se borra con todos sus pagos')) return;
+      if (demoGuard()) return;
+      var btn = this; btn.disabled = true;
+      try { var ps = S.pagos.filter(function (p) { return p.cliente_id === c.id; }); for (var i = 0; i < ps.length; i++) await retry(function () { return S.db.doc('pagos/' + ps[i].id).delete(); }); await retry(function () { return S.db.doc('clientes/' + c.id).delete(); }); d.close(); toast('Cliente eliminado'); }
+      catch (e) { btn.disabled = false; $('#cerr', d).textContent = failMsg(e); }
+    };
+    $('#cf', d).onsubmit = async function (e) {
+      e.preventDefault();
+      var row = { nombre: $('#f_nombre', d).value.trim(), servicio: $('#f_servicio', d).value.trim(), fecha_ingreso: $('#f_ingreso', d).value || today(), cuentas_publicitarias: Math.max(0, Math.round(n($('#f_cuentas', d).value))), estado: $('#f_estado', d).value,
+        monto: Math.max(0, Math.round(n($('#f_monto', d).value) * 100) / 100), moneda: $('#f_moneda', d).value, frecuencia: $('#f_frec', d).value, cobrar_desde: $('#f_desde', d).value || mes(), contacto: $('#f_wa', d).value.replace(/\D/g, ''), notas: $('#f_notas', d).value.trim(), actualizado: new Date().toISOString() };
+      if (!row.nombre) { $('#cerr', d).textContent = 'Poné el nombre del cliente.'; $('#f_nombre', d).focus(); return; }
+      if (!row.monto) { $('#cerr', d).textContent = 'Poné el monto acordado (si todavía no lo sabés, poné 0 y lo cambiás después).'; if ($('#f_monto', d).value === '') { $('#f_monto', d).focus(); return; } }
+      if (demoGuard()) return;
+      var sb = $('button[type=submit]', d); sb.disabled = true;
+      try {
+        if (nuevo) { row.creado = new Date().toISOString(); await retry(function () { return S.db.collection('clientes').add(row); }); }
+        else { row.creado = c.creado || row.actualizado; await retry(function () { return S.db.doc('clientes/' + c.id).set(row); }); }
+        d.close(); toast(nuevo ? 'Cliente agregado' : 'Cambios guardados');
+      } catch (err) { sb.disabled = false; $('#cerr', d).textContent = failMsg(err); }
+    };
+  }
+
+  function payment(c, periodoPre) {
+    if (!c) return;
+    var cu = cuenta(c), pend = cu.meses.filter(function (m) { return m.falta > 0; }), sug = periodoPre ? (cu.meses.find(function (m) { return m.periodo === periodoPre; }) || cu.actual) : (pend[0] || cu.actual);
+    var opts = c.frecuencia === 'unico' ? [mes(c.cobrar_desde || c.fecha_ingreso)] : mesesEntre(addMes(mes(), -12) < mes(c.cobrar_desde || c.fecha_ingreso) ? mes(c.cobrar_desde || c.fecha_ingreso) : addMes(mes(), -12), addMes(mes(), 2)).reverse();
+    var d = modal('<form id="pf" novalidate><h2>Registrar pago</h2><p class="lead">' + esc(c.nombre) + ' · ' + esc(cur(c.monto, c.moneda)) + (c.frecuencia === 'unico' ? ' (pago único)' : ' por mes') + (cu.deuda ? ' · debe ' + esc(cur(cu.deuda, c.moneda)) : '') + '</p><div class="fgrid">' +
+      '<label class="field">Monto que pagó (' + (c.moneda === 'ARS' ? '$' : 'US$') + ')<input id="p_monto" type="number" min="0" step="0.01" inputmode="decimal" required value="' + (sug.falta || n(c.monto) || '') + '"></label>' +
+      '<label class="field">Fecha del pago<input id="p_fecha" type="date" required max="' + today() + '" value="' + today() + '"></label>' +
+      (c.frecuencia === 'unico' ? '<input type="hidden" id="p_periodo" value="' + opts[0] + '">' : '<label class="field">Corresponde a<select id="p_periodo">' + opts.map(function (p) { var m = cu.meses.find(function (x) { return x.periodo === p; }); return '<option value="' + p + '"' + (p === sug.periodo ? ' selected' : '') + '>' + mesLargo(p) + (m && m.falta ? ' · falta ' + cur(m.falta, c.moneda) : m && m.estado === 'pagado' ? ' · pagado' : '') + '</option>'; }).join('') + '</select></label>') +
+      '<label class="field' + (c.frecuencia === 'unico' ? '' : '') + '">Medio<select id="p_medio">' + MEDIOS.map(function (x) { return '<option>' + x + '</option>'; }).join('') + '</select></label>' +
+      '<label class="field full">Nota (opcional)<input id="p_nota" maxlength="200" placeholder="Ej: primera mitad, comprobante por WhatsApp"></label>' +
+      '</div><div class="calc" id="p_calc"></div><p class="err" id="perr" role="alert"></p><div class="mrow"><button class="btn" type="button" id="pcancel">Cancelar</button><button class="btn ok" type="submit">Guardar pago</button></div></form>');
+    function calc() {
+      var p = $('#p_periodo', d).value, m = cu.meses.find(function (x) { return x.periodo === p; }) || { esperado: c.estado === 'activo' || c.frecuencia === 'unico' ? n(c.monto) : 0, pagado: pagado(c, c.frecuencia === 'unico' ? null : p) };
+      var nuevo = n($('#p_monto', d).value), falta = Math.max(0, m.esperado - m.pagado - nuevo), sobra = Math.max(0, m.pagado + nuevo - m.esperado);
+      var label = c.frecuencia === 'unico' ? 'el pago único' : mesLargo(p);
+      $('#p_calc', d).innerHTML = !nuevo ? '<span>Escribí el monto que pagó.</span>' : falta > 0 ? '<span>Pago parcial: de ' + esc(label) + ' va a quedar debiendo</span><b style="color:var(--amber)">' + esc(cur(falta, c.moneda)) + '</b>' :
+        '<span>Con este pago, ' + esc(label) + ' queda</span><b style="color:var(--green)">pagado' + (sobra > 0 && m.esperado ? ' (+' + esc(cur(sobra, c.moneda)) + ' de más)' : '') + '</b>';
+    }
+    $('#p_monto', d).oninput = calc; if ($('#p_periodo', d).tagName === 'SELECT') $('#p_periodo', d).onchange = calc; calc();
+    $('#p_monto', d).select();
+    $('#pcancel', d).onclick = function () { d.close(); };
+    $('#pf', d).onsubmit = async function (e) {
+      e.preventDefault();
+      var row = { cliente_id: c.id, monto: Math.round(n($('#p_monto', d).value) * 100) / 100, fecha: $('#p_fecha', d).value || today(), periodo: $('#p_periodo', d).value, moneda: c.moneda === 'ARS' ? 'ARS' : 'USD', medio: $('#p_medio', d).value, nota: $('#p_nota', d).value.trim(), creado: new Date().toISOString() };
+      if (!(row.monto > 0)) { $('#perr', d).textContent = 'Poné un monto mayor a cero.'; $('#p_monto', d).focus(); return; }
+      if (row.fecha > today()) { $('#perr', d).textContent = 'La fecha del pago no puede ser futura.'; return; }
+      if (demoGuard()) return;
+      var sb = $('button[type=submit]', d); sb.disabled = true;
+      try { await retry(function () { return S.db.collection('pagos').add(row); }); d.close(); toast('Pago de ' + cur(row.monto, row.moneda) + ' registrado'); }
+      catch (err) { sb.disabled = false; $('#perr', d).textContent = failMsg(err); }
+    };
+  }
+
+  function detail(c) {
+    if (!c) return;
+    var cu = cuenta(c), ps = P().filter(function (p) { return p.cliente_id === c.id; }).sort(function (a, b) { return a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0; });
+    var link = wa(c.contacto, 'Hola ' + c.nombre + '!');
+    var d = modal('<h2>' + esc(c.nombre) + '</h2><p class="lead">' + esc(c.servicio || 'Sin servicio cargado') + ' · ' + (c.estado === 'activo' ? 'Activo' : c.estado === 'baja' ? 'Dado de baja' : 'Pausado') + '</p>' +
+      '<div class="facts"><div class="fact"><small>Ingresó</small><b>' + esc(fecha(c.fecha_ingreso)) + '</b></div><div class="fact"><small>Cuentas</small><b>' + n(c.cuentas_publicitarias) + '</b></div><div class="fact"><small>Total cobrado</small><b class="num">' + esc(cur(pagado(c), c.moneda)) + '</b></div><div class="fact"><small>Debe</small><b class="num" style="color:' + (cu.deuda ? 'var(--red)' : 'var(--green)') + '">' + (cu.deuda ? esc(cur(cu.deuda, c.moneda)) : 'Nada') + '</b></div></div>' +
+      (c.frecuencia !== 'unico' && cu.meses.length ? '<div class="months" aria-label="Estado por mes">' + cu.meses.slice(-12).map(function (m) { return '<span class="mo ' + m.estado + '" title="' + esc(mesLargo(m.periodo) + ': ' + (m.estado === 'parcial' ? 'pagó ' + cur(m.pagado, c.moneda) + ' de ' + cur(m.esperado, c.moneda) : m.estado === 'sin' ? 'sin cobro' : m.estado)) + '">' + mesCorto(m.periodo) + '</span>'; }).join('') + '</div>' : '') +
+      (c.notas ? '<p class="note-tag" style="max-width:none;margin:0 0 12px">' + esc(c.notas) + '</p>' : '') +
+      '<div class="plist">' + (ps.length ? ps.map(function (p) { return '<div class="pi"><div><b class="num">' + esc(cur(p.monto, p.moneda)) + '</b> <span class="m">· ' + esc(fecha(p.fecha)) + ' · ' + esc(p.medio || '—') + '</span><div class="m">Corresponde a ' + esc(c.frecuencia === 'unico' ? 'pago único' : mesLargo(p.periodo)) + (p.nota ? ' · ' + esc(p.nota) : '') + '</div></div><button class="btn sm danger" data-del="' + esc(p.id) + '">Borrar</button></div>'; }).join('') : '<div class="empty" style="margin:0">Todavía no hay pagos registrados.</div>') + '</div>' +
+      '<p class="err" id="derr" role="alert"></p><div class="mrow">' + (link ? '<a class="btn left" href="' + link + '" target="_blank" rel="noopener">' + IC.wa + ' WhatsApp</a>' : '') + '<button class="btn" id="dedit">Editar</button><button class="btn" id="dclose">Cerrar</button><button class="btn ok" id="dpay">Registrar pago</button></div>');
+    $('#dclose', d).onclick = function () { d.close(); };
+    $('#dedit', d).onclick = function () { d.close(); editClient(c); };
+    $('#dpay', d).onclick = function () { d.close(); payment(c); };
+    $$('[data-del]', d).forEach(function (b) {
+      b.onclick = async function () {
+        if (!confirmBtn(b, '¿Seguro?')) return;
+        if (demoGuard()) return;
+        b.disabled = true;
+        try { await retry(function () { return S.db.doc('pagos/' + b.dataset.del).delete(); }); d.close(); toast('Pago borrado'); setTimeout(function () { detail(byId(c.id)); }, 250); }
+        catch (e) { b.disabled = false; $('#derr', d).textContent = failMsg(e); }
+      };
+    });
+  }
+
+  // ------------------------------------------------------------ exportar
+  async function exportCsv() {
+    var dl = S.dl || (S.dl = await use('downloads'));
+    function q(v) { v = String(v == null ? '' : v); return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+    var rows = [['Cliente', 'Servicio', 'Fecha de ingreso', 'Estado', 'Cuentas publicitarias', 'Monto acordado', 'Moneda', 'Frecuencia', 'Total cobrado', 'Debe', 'De eso, atrasado', 'WhatsApp', 'Notas']];
+    C().forEach(function (c) { var cu = cuenta(c); rows.push([c.nombre, c.servicio, c.fecha_ingreso, c.estado, n(c.cuentas_publicitarias), n(c.monto), c.moneda, c.frecuencia === 'unico' ? 'pago único' : 'mensual', pagado(c), cu.deuda, cu.atrasada, c.contacto, c.notas]); });
+    rows.push([]); rows.push(['PAGOS']); rows.push(['Cliente', 'Fecha', 'Corresponde a', 'Monto', 'Moneda', 'Medio', 'Nota']);
+    P().slice().sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; }).forEach(function (p) { var c = byId(p.cliente_id); rows.push([c ? c.nombre : '(cliente borrado)', p.fecha, p.periodo, n(p.monto), p.moneda, p.medio, p.nota]); });
+    var csv = '﻿' + rows.map(function (r) { return r.map(q).join(';'); }).join('\n');
+    if (!dl) { toast('Descargar no está disponible en esta vista. Abrí el panel en claude.ai desde la compu.'); return; }
+    try { await dl.save({ filename: 'cuentas-agencia-' + today() + '.csv', data: csv }); toast('Planilla descargada: se abre con Excel o Google Sheets'); }
+    catch (e) { if (e && e.code === 'declined') return; toast(e && e.code === 'host_unavailable' ? 'Desde esta app no se pueden guardar archivos: abrilo en la compu.' : 'No se pudo descargar la planilla.'); }
+  }
+
+  // ------------------------------------------------------------ ejemplo (no se guarda)
+  var DEMO = (function () {
+    var m0 = mes(), t = new Date();
+    function dAgo(k) { var d = new Date(t); d.setDate(d.getDate() - k); return iso(d); }
+    var cl = [
+      ['ej1', 'Panel Norte', 'Pauta + Dashboard', 140, 2, 700, 'USD', 'mensual', 'activo', -3, 'Ejemplo'],
+      ['ej2', 'Grupo Delta', 'Pauta Meta Ads', 95, 3, 900, 'USD', 'mensual', 'activo', -2, 'Paga en dos partes: mitad a principio y mitad a mitad de mes.'],
+      ['ej3', 'Litoral Play', 'Pauta Meta Ads', 60, 1, 500, 'USD', 'mensual', 'activo', -1, ''],
+      ['ej4', 'Costa', 'Estructura WhatsApp', 40, 1, 350000, 'ARS', 'mensual', 'activo', -1, ''],
+      ['ej5', 'Andes', 'Mentoría 1 a 1', 25, 0, 400, 'USD', 'unico', 'activo', -1, ''],
+      ['ej6', 'Sur', 'Pauta Meta Ads', 200, 2, 600, 'USD', 'mensual', 'baja', -4, ''],
+    ].map(function (x) { return { id: x[0], nombre: x[1], servicio: x[2], fecha_ingreso: dAgo(x[3]), cuentas_publicitarias: x[4], monto: x[5], moneda: x[6], frecuencia: x[7], estado: x[8], cobrar_desde: addMes(m0, x[9]), contacto: '', notas: x[10] === 'Ejemplo' ? '' : x[10] }; });
+    var ps = [];
+    function pay(id, k, monto, medio, dia) { var c = cl.find(function (x) { return x.id === id; }), p = addMes(m0, k); ps.push({ id: 'p' + ps.length, cliente_id: id, periodo: p, monto: monto, moneda: c.moneda, medio: medio, fecha: p + '-' + String(Math.min(dia || 5, t.getDate())).padStart(2, '0'), nota: '' }); }
+    pay('ej1', -3, 700, 'Transferencia'); pay('ej1', -2, 700, 'Transferencia'); pay('ej1', -1, 700, 'Cripto'); pay('ej1', 0, 700, 'Transferencia', 3);
+    pay('ej2', -2, 900, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia'); pay('ej2', -1, 450, 'Transferencia', 16); pay('ej2', 0, 450, 'Transferencia', 4);
+    pay('ej3', -1, 500, 'Mercado Pago'); pay('ej4', -1, 350000, 'Transferencia'); pay('ej4', 0, 200000, 'Efectivo', 8); pay('ej5', -1, 200, 'Mercado Pago', 20);
+    pay('ej6', -4, 600, 'Transferencia'); pay('ej6', -3, 600, 'Transferencia');
+    return { clientes: cl, pagos: ps };
+  })();
+
+  // ------------------------------------------------------------ arranque
+  var timer = setTimeout(function () { if (!S.loaded.c || !S.loaded.p) { sync('warn', 'Sin conexión todavía'); if (!S.db) { app.innerHTML = noDb(); bindNoDb(); } else app.innerHTML = '<div class="card welcome"><h2>Todavía no pude traer tus datos</h2><p>Puede ser la conexión. Esperá unos segundos: en cuanto responda, aparecen solos.</p></div>'; } }, 10000);
+  function noDb() { return '<div class="card welcome"><h2>Este panel guarda tus datos en claude.ai</h2><p>Abrilo desde tu cuenta de claude.ai (en la compu o en la app) para ver y cargar tus clientes. Mientras tanto podés ver cómo funciona con un ejemplo.</p><div class="actions"><button class="btn" id="tryDemo">Ver el ejemplo</button></div></div>'; }
+  function bindNoDb() { $('#tryDemo').onclick = function () { S.demo = true; render(); }; }
+  use('db').then(function (db) {
+    if (!db) { clearTimeout(timer); sync('bad', 'Sin base de datos'); app.innerHTML = noDb(); bindNoDb(); return; }
+    S.db = db;
+    function onErr(e) { sync('bad', e && e.code === 'revoked' ? 'Sin acceso' : 'Se cortó la conexión'); clearTimeout(timer); if (!S.loaded.c || !S.loaded.p) { app.innerHTML = '<div class="card welcome"><h2>No pude abrir tus datos</h2><p>' + (e && e.code === 'revoked' ? 'Este panel es privado del dueño.' : 'Recargá la página en un rato.') + '</p></div>'; } }
+    function snap(key) { return function (s) {
+      var list = s.docs.map(function (d) { var x = Object.assign({}, d.data()); x.id = d.id; return x; });
+      if (key === 'c') S.clientes = list; else S.pagos = list;
+      S.loaded[key] = true;
+      if (!s.metadata.fromCache && S.loaded.c && S.loaded.p) { clearTimeout(timer); sync('ok', s.metadata.hasPendingWrites ? 'Guardando…' : 'Guardado'); }
+      render();
+    }; }
+    db.collection('clientes').onSnapshot(snap('c'), onErr);
+    db.collection('pagos').onSnapshot(snap('p'), onErr);
+  }, function () { clearTimeout(timer); sync('bad', 'Sin base de datos'); app.innerHTML = noDb(); bindNoDb(); });
+})();
+</script>
