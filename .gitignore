@@ -4,3 +4,4 @@ dist
 caja-netlify/
 caja-netlify.zip
 agencia-netlify.zip
+videos/**/*.mp4
